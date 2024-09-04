@@ -5,8 +5,9 @@
 A powerful and user-friendly GUI application that allows you to effortlessly download your favorite tracks, albums, and playlists **directly** from Spotify in high quality.
 
 > [!WARNING]
-Sometimes Lucida servers have problems, always check Lucida Stats before using it, **Yank or SpotifyDown** is highly recommended. 
+Sometimes Lucida servers have problems, always check Lucida Stats before using it, **Yank** or **SpotifyDown** is highly recommended. 
 
+[Direct Download](https://github.com/afkarxyz/Spotify-Direct-Downloader/releases/download/spotify/Spotify.Direct.Downloader.exe)
 
 ## Features
 
