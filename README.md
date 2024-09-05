@@ -1,3 +1,5 @@
+[![GitHub All Releases](https://img.shields.io/github/downloads/afkarxyz/Spotify-Direct-Downloader/total?style=for-the-badge)](https://github.com/afkarxyz/Spotify-Direct-Downloader/releases)
+
 # Spotify Direct Downloader
 
 A powerful and user-friendly GUI application that allows you to effortlessly download your favorite tracks, albums, and playlists **directly** from Spotify in high quality.
@@ -6,8 +8,6 @@ A powerful and user-friendly GUI application that allows you to effortlessly dow
 Sometimes Lucida servers have problems, always check Lucida Stats before using it, **Yank** or **SpotifyDown** is highly recommended. 
 
 [Download Directly](https://github.com/afkarxyz/Spotify-Direct-Downloader/releases/download/spotify/Spotify.Direct.Downloader.exe) or if you are familiar with UserScript, you can try [this.](https://github.com/afkarxyz/Yank-UserScript)
-
-[![GitHub All Releases](https://img.shields.io/github/downloads/afkarxyz/Spotify-Direct-Downloader/total?style=for-the-badge)](https://github.com/afkarxyz/Spotify-Direct-Downloader/releases)
 
 ## Features
 
