@@ -7,7 +7,7 @@ A powerful and user-friendly GUI application that allows you to effortlessly dow
 > [!WARNING]
 Sometimes Lucida servers have problems, always check Lucida Stats before using it, **Yank** or **SpotifyDown** is highly recommended. 
 
-[Direct Download](https://github.com/afkarxyz/Spotify-Direct-Downloader/releases/download/spotify/Spotify.Direct.Downloader.exe)
+[Download Directly](https://github.com/afkarxyz/Spotify-Direct-Downloader/releases/download/spotify/Spotify.Direct.Downloader.exe) or if you are familiar with UserScript, you can try [this.](https://raw.githubusercontent.com/afkarxyz/Yank-UserScript/main/Yank.js)
 
 ## Features
 
