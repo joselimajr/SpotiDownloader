@@ -1,6 +1,6 @@
-# SPDDL - Spotify Direct Downloader
+# SPDDL - Spotify Direct Download
 
-SPDDL (Spotify Direct Downloader) is a Python script that allows you to download tracks, albums, and playlists from Spotify.
+SPDDL (Spotify Direct Download) is a Python script that allows you to download tracks, albums, and playlists directly from Spotify.
 
 ```
    _______  ___  ___  __ 
@@ -44,20 +44,6 @@ To use SPDDL, simply run the Code Runner.bat file:
 3. For albums and playlists, you can choose to download all tracks or select specific ones
 4. The script will download the tracks, saving them as MP3 files in the appropriate folders
 5. Metadata and cover art are automatically added to the downloaded files
-
-## Download Methods
-- **SpotifyDown (320 kbps)**
-  - Higher quality audio
-  - Downloads may take a little longer
-
-- **Yank (128 kbps)**
-  - Lower quality audio
-  - Faster downloads
-  - Alternative source if SpotifyDown fails
-
-## Contributing
-
-Feel free to fork this repository and submit pull requests. You can also open issues for bugs or feature requests.
 
 ## Legal Notice
 
