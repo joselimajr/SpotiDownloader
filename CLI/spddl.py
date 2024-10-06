@@ -11,7 +11,7 @@ TITLE = r"""   _______  ___  ___  __
  _\ \/ ___/ // / // / /__
 /___/_/  /____/____/____/
                                
-Spotify Direct Downloader
+Spotify Direct Download
 """
 print(TITLE)
 print("Welcome to SPDDL - Your Spotify Track Saver!")
