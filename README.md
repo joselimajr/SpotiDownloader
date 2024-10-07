@@ -2,7 +2,7 @@
 
 # spddl GUI
 
-**spddl GUI** is a graphical user interface for downloading Spotify tracks, albums, and playlists using either the SpotifyDown or Yank servers. This application is built with PyQt6 and provides an easy-to-use interface for the spddl library.
+**spddl GUI** is a graphical user interface for downloading Spotify tracks, albums, and playlists using either the SpotifyDown or Yank servers.
 
 ## Screenshots
 
