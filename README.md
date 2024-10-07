@@ -1,33 +1,35 @@
-[![GitHub All Releases](https://img.shields.io/github/downloads/afkarxyz/Spotify-Direct-Downloader/total?style=for-the-badge)](https://github.com/afkarxyz/Spotify-Direct-Downloader/releases)
+[![GitHub All Releases](https://img.shields.io/github/downloads/afkarxyz/spddl-GUI/total?style=for-the-badge)](https://github.com/afkarxyz/spddl-GUI/releases)
 
-# Spotify Direct Downloader
+# spddl GUI
 
-A powerful and user-friendly GUI application that allows you to effortlessly download your favorite tracks, albums, and playlists **directly** from Spotify in high quality.
-
-> [!WARNING]
-Sometimes Lucida servers have problems, always check Lucida Stats before using it, **Yank** or **SpotifyDown** is highly recommended. 
-
-## Features
-
-- Download individual tracks, entire albums, or complete playlists
-- The ability to select multiple tracks using Ctrl+Click or Shift+Click
-- Multiple downloader options (Yank, SpotifyDown and Lucida)
-- Real-time download progress tracking
-- Download history with sorting options
-- Integrated Lucida Stats viewer
-- Pause, resume, and stop download functionality
+**spddl GUI** is a graphical user interface for downloading Spotify tracks, albums, and playlists using either the SpotifyDown or Yank servers. This application is built with PyQt6 and provides an easy-to-use interface for the spddl library.
 
 ## Screenshots
 
-![image](https://github.com/user-attachments/assets/3b5ef90a-5093-41f9-b3b4-476dbf864d3c)
+![image](https://github.com/user-attachments/assets/c41a85bf-d01d-4711-9ede-3a2a1287068f)
 
-![image](https://github.com/user-attachments/assets/bf027cef-949e-47f5-8cc3-f1de1583d6d6)
+![image](https://github.com/user-attachments/assets/56f3db12-c073-4dae-81f2-c7209306adc8)
 
-![image](https://github.com/user-attachments/assets/9f82e12d-6a7e-4be4-ba1d-a56df84d307e)
+![image](https://github.com/user-attachments/assets/58e0530e-6d9e-4b73-a5e0-9c32549ff8a7)
 
-![image](https://github.com/user-attachments/assets/c9c3f6a5-715e-4313-8bd2-92abca403fed)
+## Features
 
-> [!CAUTION]
-> This tool is for personal use only. Please respect copyright laws and Spotify's terms of service.
+- Download individual tracks, entire albums, or playlists from Spotify
+- Choose between SpotifyDown (320 kbps) and Yank (128 kbps) servers for downloads
+- Customizable output directory
+- Track list management (add, remove, clear)
+- Download history with sorting options
+- Progress tracking for downloads
+- Pause, resume, and stop functionality for downloads
 
-Made with ❤️ by afkarxyz
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## Legal Notice
+
+This tool is for educational purposes only. Please respect copyright laws and Spotify's terms of service. Support artists by using official platforms to purchase their music.
+
+## Disclaimer
+
+This project is not affiliated with, maintained, authorized, endorsed, or sponsored by Spotify or any of its affiliates.
