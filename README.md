@@ -4,6 +4,9 @@
 
 **spddl GUI** is a graphical user interface for downloading Spotify tracks, albums, and playlists using either the SpotifyDown or Yank servers.
 
+#
+#### If you know Userscript [try this,](https://github.com/afkarxyz/Yank-UserScript) and [try this](https://github.com/afkarxyz/spddl) if you're familiar with CLI.
+
 ## Screenshots
 
 ![image](https://github.com/user-attachments/assets/c41a85bf-d01d-4711-9ede-3a2a1287068f)
