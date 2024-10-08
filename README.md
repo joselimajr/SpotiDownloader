@@ -9,11 +9,11 @@
 
 ## Screenshots
 
-![image](https://github.com/user-attachments/assets/82be0945-bfaf-442a-9303-c569e84b20ff)
+![image](https://github.com/user-attachments/assets/93bc3a2e-4be4-4b6d-8e68-fd3e014d7bcc)
 
-![image](https://github.com/user-attachments/assets/0fe86954-dd73-41c0-b523-d1a311fb3728)
+![image](https://github.com/user-attachments/assets/ec2003a1-c425-4abb-b1cd-c42ccddec374)
 
-![image](https://github.com/user-attachments/assets/d17e7f12-af02-4bd7-93b5-6872464f7522)
+![image](https://github.com/user-attachments/assets/34ac07ef-f0f4-455e-b801-99dbc832206e)
 
 ## Features
 
