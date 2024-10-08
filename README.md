@@ -23,10 +23,6 @@
 - Progress tracking for downloads
 - Pause, resume, and stop functionality for downloads
 
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
 ## Legal Notice
 
 This tool is for educational purposes only. Please respect copyright laws and Spotify's terms of service. Support artists by using official platforms to purchase their music.
