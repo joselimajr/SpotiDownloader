@@ -289,13 +289,15 @@ class spddlGUI(QWidget):
         history_layout.addWidget(self.history_list)
 
         # Create sort buttons
-        sort_buttons_layout = QHBoxLayout()
+        self.sort_buttons_layout = QHBoxLayout()
+        self.sort_buttons = []
         for sort_option in ['Type', 'Date', 'Title', 'Artist']:
             btn = QPushButton(f'Sort by {sort_option}')
             btn.clicked.connect(lambda checked, opt=sort_option.lower(): self.sort_history(opt))
-            sort_buttons_layout.addWidget(btn)
+            self.sort_buttons_layout.addWidget(btn)
+            self.sort_buttons.append(btn)
 
-        history_layout.addLayout(sort_buttons_layout)
+        history_layout.addLayout(self.sort_buttons_layout)
         history_tab.setLayout(history_layout)
         self.tab_widget.addTab(history_tab, "History")
         self.update_history_list()
@@ -580,6 +582,14 @@ class spddlGUI(QWidget):
         self.reset_info_widget()
         self.spotify_url.clear()
 
+    def toggle_sort_buttons(self):
+        if self.history:
+            for btn in self.sort_buttons:
+                btn.show()
+        else:
+            for btn in self.sort_buttons:
+                btn.hide()
+
     def add_to_history(self, url, title, artist, item_type):
         current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
@@ -589,6 +599,7 @@ class spddlGUI(QWidget):
         self.history.insert(0, new_item)
         self.history = self.history[:20]
         self.save_history()
+        self.toggle_sort_buttons()
 
     def sort_history(self, sort_option):
         self.sort_order[sort_option] = Qt.SortOrder.DescendingOrder if self.sort_order[sort_option] == Qt.SortOrder.AscendingOrder else Qt.SortOrder.AscendingOrder
@@ -615,6 +626,8 @@ class spddlGUI(QWidget):
             if item.artist:
                 display_text += f" ({item.artist})"
             self.history_list.addItem(display_text)
+        
+        self.toggle_sort_buttons()
 
     def load_history_item(self, item):
         index = self.history_list.row(item)
