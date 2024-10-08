@@ -19,8 +19,6 @@
 
 - Download individual tracks, entire albums, or playlists from Spotify
 - Choose between SpotifyDown (320 kbps) and Yank (128 kbps) servers for downloads
-- Customizable output directory
-- Track list management (add, remove, clear)
 - Download history with sorting options
 - Progress tracking for downloads
 - Pause, resume, and stop functionality for downloads
