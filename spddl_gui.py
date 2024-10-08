@@ -4,9 +4,10 @@ from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel, QFileDialog, 
                              QListWidget, QMessageBox, QTextEdit, QComboBox, QTabWidget, QAbstractItemView, QSpacerItem, 
                              QSizePolicy, QProgressBar)
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl
-from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices
-from spddl import get_track_info, get_album_info, get_playlist_info, download_track_spotifydown, download_track_yank, sanitize_filename, Song
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize
+from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap, QKeySequence
+from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+from spddl import get_track_info, get_album_info, get_playlist_info, download_track_spotifydown, download_track_yank, sanitize_filename, Song, get_widget_info
 
 def configure_io_encoding():
     try:
@@ -65,6 +66,44 @@ class DownloadWorker(QThread):
         self.is_stopped = True
         self.is_paused = False
 
+class SpotifyUrlInput(QLineEdit):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.show_context_menu)
+
+    def show_context_menu(self, pos):
+        menu = self.createStandardContextMenu()
+        
+        for action in menu.actions():
+            if action.text().lower().find('paste') != -1:
+                original_icon = action.icon()
+                menu.removeAction(action)
+                paste_action = menu.addAction(original_icon, 'Paste')
+                paste_action.triggered.connect(self.validate_and_paste)
+                break
+        
+        menu.exec(self.mapToGlobal(pos))
+
+    def validate_and_paste(self):
+        clipboard = QApplication.clipboard()
+        clipboard_text = clipboard.text().strip()
+        
+        if clipboard_text.startswith("https://open.spotify.com/"):
+            self.setText(clipboard_text)
+        else:
+            QMessageBox.warning(
+                self, 
+                'Invalid URL', 
+                'Please copy a valid Spotify URL starting with "https://open.spotify.com/"'
+            )
+
+    def keyPressEvent(self, event):
+        if event.matches(QKeySequence.StandardKey.Paste):
+            self.validate_and_paste()
+            return
+        super().keyPressEvent(event)
+
 class spddlGUI(QWidget):
     def __init__(self):
         super().__init__()
@@ -73,45 +112,82 @@ class spddlGUI(QWidget):
         self.is_album = self.is_playlist = self.is_single_track = False
         self.history = []
         self.load_history()
+        self.sort_order = {
+            'type': Qt.SortOrder.AscendingOrder,
+            'date': Qt.SortOrder.DescendingOrder,
+            'title': Qt.SortOrder.AscendingOrder,
+            'artist': Qt.SortOrder.AscendingOrder
+        }
         self.initUI()
 
     def initUI(self):
         self.setWindowTitle('spddl GUI')
-        self.setFixedSize(650, 400)
+        self.setFixedSize(700, 500)
+        
         self.icon_path = os.path.join(os.path.dirname(__file__), "icon.svg")
         if os.path.exists(self.icon_path):
             self.setWindowIcon(QIcon(self.icon_path))
         else:
             print("Warning: Icon file 'icon.svg' not found.")
         
+        icon_size = QSize(16, 16)
+        paste_icon_path = os.path.join(os.path.dirname(__file__), "paste.svg")
+        folder_icon_path = os.path.join(os.path.dirname(__file__), "folder.svg")
+        
+        paste_icon = QIcon(paste_icon_path) if os.path.exists(paste_icon_path) else QIcon()
+        folder_icon = QIcon(folder_icon_path) if os.path.exists(folder_icon_path) else QIcon()
+        
+        if not paste_icon.availableSizes():
+            print("Warning: Paste icon 'paste.svg' not found.")
+        if not folder_icon.availableSizes():
+            print("Warning: Folder icon 'folder.svg' not found.")
+        
         main_layout = QVBoxLayout()
         
-        # Spotify URL input
         spotify_layout = QHBoxLayout()
         spotify_label = QLabel('Spotify URL:')
         spotify_label.setFixedWidth(100)
-        self.spotify_url = QLineEdit()
+        
+        self.spotify_url = SpotifyUrlInput()
+        
+        self.paste_btn = QPushButton()
+        self.paste_btn.setIcon(paste_icon)
+        self.paste_btn.setIconSize(icon_size)
+        self.paste_btn.setFixedSize(24, 24)
+        self.paste_btn.setToolTip('Paste from clipboard')
+        self.paste_btn.clicked.connect(self.spotify_url.validate_and_paste)
+        
         self.fetch_btn = QPushButton('Fetch')
         self.fetch_btn.clicked.connect(self.fetch_tracks)
+        
         spotify_layout.addWidget(spotify_label)
         spotify_layout.addWidget(self.spotify_url)
+        spotify_layout.addWidget(self.paste_btn)
         spotify_layout.addWidget(self.fetch_btn)
         main_layout.addLayout(spotify_layout)
 
-        # Output directory
         output_layout = QHBoxLayout()
         output_label = QLabel('Output Directory:')
         output_label.setFixedWidth(100)
         self.output_dir = QLineEdit()
         self.output_dir.setText(os.path.expanduser("~\\Music"))
+        
+        self.open_dir_btn = QPushButton()
+        self.open_dir_btn.setIcon(folder_icon)
+        self.open_dir_btn.setIconSize(icon_size)
+        self.open_dir_btn.setFixedSize(24, 24)
+        self.open_dir_btn.setToolTip('Open output directory')
+        self.open_dir_btn.clicked.connect(self.open_output_dir)
+        
         self.output_browse = QPushButton('Browse')
         self.output_browse.clicked.connect(self.browse_output)
+        
         output_layout.addWidget(output_label)
         output_layout.addWidget(self.output_dir)
+        output_layout.addWidget(self.open_dir_btn)
         output_layout.addWidget(self.output_browse)
         main_layout.addLayout(output_layout)
 
-        # Server selection
         server_layout = QHBoxLayout()
         server_label = QLabel('Server:')
         server_label.setFixedWidth(100)
@@ -124,13 +200,40 @@ class spddlGUI(QWidget):
         server_layout.addWidget(self.server_select)
         main_layout.addLayout(server_layout)
 
-        # Create tab widget
         self.tab_widget = QTabWidget()
         main_layout.addWidget(self.tab_widget)
 
-        # Tracks tab
         tracks_tab = QWidget()
         tracks_layout = QVBoxLayout()
+
+        self.info_widget = QWidget()
+        info_layout = QHBoxLayout()
+        self.cover_label = QLabel()
+        self.cover_label.setFixedSize(75, 75)
+        self.cover_label.setScaledContents(True)
+        info_layout.addWidget(self.cover_label)
+
+        text_info_layout = QVBoxLayout()
+        self.title_label = QLabel()
+        self.title_label.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.title_label.setWordWrap(True)
+        self.artists_label = QLabel()
+        self.artists_label.setWordWrap(True)
+        self.release_date_label = QLabel()
+        self.release_date_label.setWordWrap(True)
+        
+        text_info_layout.addWidget(self.title_label)
+        text_info_layout.addWidget(self.artists_label)
+        text_info_layout.addWidget(self.release_date_label)
+        text_info_layout.addStretch()
+
+        info_layout.addLayout(text_info_layout, 1)
+        self.info_widget.setLayout(info_layout)
+        self.info_widget.setFixedHeight(100)
+        self.info_widget.hide()
+
+        tracks_layout.addWidget(self.info_widget)
+
         self.track_list = QListWidget()
         self.track_list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         tracks_layout.addWidget(self.track_list)
@@ -158,7 +261,6 @@ class spddlGUI(QWidget):
 
         self.hide_track_buttons()
 
-        # Process tab
         self.process_tab = QWidget()
         process_layout = QVBoxLayout()
         self.log_output = QTextEdit()
@@ -180,26 +282,24 @@ class spddlGUI(QWidget):
         self.process_tab.setLayout(process_layout)
         self.tab_widget.addTab(self.process_tab, "Process")
 
-        # History tab
         history_tab = QWidget()
         history_layout = QVBoxLayout()
-        sort_layout = QHBoxLayout()
-        sort_label = QLabel("Sort by:")
-        self.sort_combo = QComboBox()
-        self.sort_combo.addItems(["Title", "Artist", "Type", "Date"])
-        self.sort_combo.currentIndexChanged.connect(self.sort_history)
-        sort_layout.addWidget(sort_label)
-        sort_layout.addWidget(self.sort_combo)
-        sort_layout.addStretch()
-        history_layout.addLayout(sort_layout)
         self.history_list = QListWidget()
         self.history_list.itemClicked.connect(self.load_history_item)
         history_layout.addWidget(self.history_list)
+
+        # Create sort buttons
+        sort_buttons_layout = QHBoxLayout()
+        for sort_option in ['Type', 'Date', 'Title', 'Artist']:
+            btn = QPushButton(f'Sort by {sort_option}')
+            btn.clicked.connect(lambda checked, opt=sort_option.lower(): self.sort_history(opt))
+            sort_buttons_layout.addWidget(btn)
+
+        history_layout.addLayout(sort_buttons_layout)
         history_tab.setLayout(history_layout)
         self.tab_widget.addTab(history_tab, "History")
         self.update_history_list()
 
-        # About tab
         about_tab = QWidget()
         about_layout = QVBoxLayout()
         about_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -257,17 +357,38 @@ class spddlGUI(QWidget):
 
         self.setLayout(main_layout)
 
+    def open_output_dir(self):
+        path = self.output_dir.text()
+        if os.path.exists(path):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+        else:
+            QMessageBox.warning(self, 'Warning', 'Output directory does not exist.')
+
     def browse_output(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Output Directory")
         if directory: self.output_dir.setText(directory)
 
     def fetch_tracks(self):
-        url = self.spotify_url.text()
+        url = self.spotify_url.text().strip()
+        
         if not url:
             QMessageBox.warning(self, 'Warning', 'Please enter a Spotify URL.')
             return
+            
+        if not url.startswith("https://open.spotify.com/"):
+            QMessageBox.warning(
+                self, 
+                'Invalid URL', 
+                'Please enter a valid Spotify URL starting with "https://open.spotify.com/"'
+            )
+            return
+
+        self.reset_info_widget()
+        self.clear_tracks()
 
         try:
+            widget_info = get_widget_info(url)
+            
             if "album" in url:
                 self.tracks, self.album_or_playlist_name = get_album_info(url)
                 self.is_album, self.is_playlist, self.is_single_track = True, False, False
@@ -289,11 +410,18 @@ class spddlGUI(QWidget):
                 self.album_or_playlist_name = f"{self.tracks[0].title} - {self.tracks[0].artists}"
                 item_type = "Track"
 
-            self.track_list.clear()
-            for i, track in enumerate(self.tracks, 1):
-                self.track_list.addItem(f"{i}. {track.title} - {track.artists}")
+            if self.is_single_track:
+                self.track_list.hide()
+            else:
+                self.track_list.show()
+                self.track_list.clear()
+                for i, track in enumerate(self.tracks, 1):
+                    self.track_list.addItem(f"{i}. {track.title} - {track.artists}")
             
-            self.add_to_history(url, self.album_or_playlist_name, item_type)
+            self.add_to_history(url, widget_info['title'], widget_info['artist'], item_type)
+            self.update_history_list()
+            
+            self.update_info_widget(widget_info)
             
             QMessageBox.information(self, 'Success', f'Fetched {len(self.tracks)} track{"" if len(self.tracks) == 1 else "s"}.')
             
@@ -301,6 +429,39 @@ class spddlGUI(QWidget):
             self.tab_widget.setCurrentIndex(0)
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'An error occurred: {str(e)}')
+
+    def update_info_widget(self, widget_info):
+        self.title_label.setText(widget_info['title'])
+        self.artists_label.setText(widget_info['artist'])
+        if widget_info['releaseDate']:
+            release_date = datetime.strptime(widget_info['releaseDate'], "%Y-%m-%d")
+            formatted_date = release_date.strftime("%d-%m-%Y")
+            self.release_date_label.setText(f"<b>Released</b> {formatted_date}")
+            self.release_date_label.show()
+        else:
+            self.release_date_label.hide()
+        
+        self.network_manager = QNetworkAccessManager()
+        self.network_manager.finished.connect(self.on_cover_loaded)
+        self.network_manager.get(QNetworkRequest(QUrl(widget_info['cover'])))
+        
+        self.info_widget.show()
+
+    def reset_info_widget(self):
+        self.title_label.clear()
+        self.artists_label.clear()
+        self.release_date_label.clear()
+        self.cover_label.clear()
+        self.info_widget.hide()
+
+    def on_cover_loaded(self, reply):
+        if reply.error() == QNetworkReply.NetworkError.NoError:
+            data = reply.readAll()
+            pixmap = QPixmap()
+            pixmap.loadFromData(data)
+            self.cover_label.setPixmap(pixmap)
+        else:
+            print(f"Error loading cover image: {reply.errorString()}")
 
     def update_button_states(self):
         if self.is_single_track:
@@ -407,51 +568,50 @@ class spddlGUI(QWidget):
     def clear_tracks(self):
         self.track_list.clear()
         self.tracks.clear()
-        self.is_single_track = False
+        self.is_album = self.is_playlist = self.is_single_track = False
+        self.album_or_playlist_name = ''
         self.hide_track_buttons()
-        self.spotify_url.clear()
-        self.output_dir.setText(os.path.expanduser("~\\Music"))
         self.log_output.clear()
         self.progress_bar.setValue(0)
         self.progress_bar.hide()
         self.stop_btn.hide()
         self.pause_resume_btn.hide()
         self.pause_resume_btn.setText('Pause')
+        self.reset_info_widget()
+        self.spotify_url.clear()
 
-    def add_to_history(self, url, title, item_type):
-        current_date = datetime.now().strftime("%d-%m-%Y")
-        artist = ""
+    def add_to_history(self, url, title, artist, item_type):
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        if item_type in ["Album", "Playlist"]:
-            if self.tracks:
-                artist = self.tracks[0].artists
-        elif item_type == "Track":
-            parts = title.rsplit(" - ", 1)
-            title, artist = parts if len(parts) > 1 else (title, "Unknown Artist")
-        
-        new_item = HistoryItem(url, title, artist, item_type, current_date)
+        new_item = HistoryItem(url, title, artist, item_type, current_datetime)
         
         self.history = [item for item in self.history if item.url != new_item.url]
         self.history.insert(0, new_item)
         self.history = self.history[:20]
         self.save_history()
 
-    def sort_history(self):
-        sort_option = self.sort_combo.currentText()
+    def sort_history(self, sort_option):
+        self.sort_order[sort_option] = Qt.SortOrder.DescendingOrder if self.sort_order[sort_option] == Qt.SortOrder.AscendingOrder else Qt.SortOrder.AscendingOrder
+
         key_func = {
-            "Title": lambda x: x.title.lower(),
-            "Artist": lambda x: x.artist.lower(),
-            "Type": lambda x: x.type.lower(),
-            "Date": lambda x: datetime.strptime(x.date, "%d-%m-%Y")
+            "type": lambda x: x.type.lower(),
+            "date": lambda x: datetime.strptime(x.date, "%Y-%m-%d %H:%M:%S"),
+            "title": lambda x: x.title.lower(),
+            "artist": lambda x: x.artist.lower()
         }
-        reverse = sort_option == "Date"
-        self.history.sort(key=key_func[sort_option], reverse=reverse)
+
+        self.history.sort(
+            key=key_func[sort_option],
+            reverse=(self.sort_order[sort_option] == Qt.SortOrder.DescendingOrder)
+        )
+
         self.update_history_list()
 
     def update_history_list(self):
         self.history_list.clear()
         for i, item in enumerate(self.history, 1):
-            display_text = f"{i}. {item.type} | {item.date} | {item.title}"
+            display_date = datetime.strptime(item.date, "%Y-%m-%d %H:%M:%S").strftime("%d-%m-%Y")
+            display_text = f"{i}. {item.type} | {display_date} | {item.title}"
             if item.artist:
                 display_text += f" ({item.artist})"
             self.history_list.addItem(display_text)
@@ -484,4 +644,4 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = spddlGUI()
     ex.show()
-    sys.exit(app.exec())    
+    sys.exit(app.exec())
