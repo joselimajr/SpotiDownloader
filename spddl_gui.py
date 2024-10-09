@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel, QFileDialog, 
                              QListWidget, QMessageBox, QTextEdit, QComboBox, QTabWidget, QAbstractItemView, QSpacerItem, 
-                             QSizePolicy, QProgressBar)
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize
+                             QSizePolicy, QProgressBar, QMenu)
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize, QTimer, QTime
 from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap, QKeySequence
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 from spddl import get_track_info, get_album_info, get_playlist_info, download_track_spotifydown, download_track_yank, sanitize_filename, Song, get_widget_info
@@ -31,11 +31,12 @@ class DownloadWorker(QThread):
     finished = pyqtSignal(bool, str)
     progress = pyqtSignal(str, int)
     
-    def __init__(self, tracks, outpath, download_method, is_album=False, is_playlist=False, album_or_playlist_name=''):
+    def __init__(self, tracks, outpath, download_method, is_single_track=False, is_album=False, is_playlist=False, album_or_playlist_name=''):
         super().__init__()
         self.tracks = tracks
         self.outpath = outpath
         self.download_method = download_method
+        self.is_single_track = is_single_track
         self.is_album = is_album
         self.is_playlist = is_playlist
         self.album_or_playlist_name = album_or_playlist_name
@@ -45,26 +46,71 @@ class DownloadWorker(QThread):
     def run(self):
         try:
             total_tracks = len(self.tracks)
-            for i, track in enumerate(self.tracks):
-                while self.is_paused:
-                    if self.is_stopped: return
-                    self.msleep(100)
-                if self.is_stopped: return
+            
+            if self.is_single_track:
+                self.download_single_track()
+            else:
+                self.download_multiple_tracks(total_tracks)
+                
+        except Exception as e:
+            self.finished.emit(False, f"An error occurred during the download process: {str(e)}")
+
+    def download_single_track(self):
+        track = self.tracks[0]
+        self.progress.emit(f"Starting download: {track.title} - {track.artists}", 0)
+        
+        try:
+            if self.download_method == "spotifydown":
+                download_track_spotifydown(track, self.outpath)
+            else:
+                download_track_yank(track, self.outpath)
+            self.progress.emit(f"Downloaded successfully: {track.title} - {track.artists}", 100)
+            self.finished.emit(True, "Download completed successfully!")
+        except Exception as e:
+            self.progress.emit(f"Download failed: {track.title} - {track.artists}. Error: {str(e)}", 0)
+            self.finished.emit(False, f"Download failed: {str(e)}")
+
+    def download_multiple_tracks(self, total_tracks):
+        for i, track in enumerate(self.tracks):
+            while self.is_paused:
+                if self.is_stopped:
+                    self.progress.emit("Download process stopped by user.", 0)
+                    return
+                self.msleep(100)
+            if self.is_stopped:
+                self.progress.emit("Download process stopped by user.", 0)
+                return
+            
+            self.progress.emit(f"Starting download ({i+1}/{total_tracks}): {track.title} - {track.artists}", 0)
+            
+            try:
                 if self.download_method == "spotifydown":
                     download_track_spotifydown(track, self.outpath)
                 else:
                     download_track_yank(track, self.outpath)
                 progress_percentage = int((i + 1) / total_tracks * 100)
-                self.progress.emit(f"Downloaded: {track.title} - {track.artists}", progress_percentage)
-            self.finished.emit(True, "Download completed successfully!")
-        except Exception as e:
-            self.finished.emit(False, str(e))
+                self.progress.emit(f"Downloaded successfully ({i+1}/{total_tracks}): {track.title} - {track.artists}", progress_percentage)
+            except Exception as e:
+                self.progress.emit(f"Download failed ({i+1}/{total_tracks}): {track.title} - {track.artists}. Error: {str(e)}", 0)
+                continue
+        
+        if i == total_tracks - 1:
+            self.finished.emit(True, "All downloads completed successfully!")
+        else:
+            self.finished.emit(True, f"Download process completed. {i+1} out of {total_tracks} tracks downloaded.")
 
-    def pause(self): self.is_paused = True
-    def resume(self): self.is_paused = False
+    def pause(self):
+        self.is_paused = True
+        self.progress.emit("Download process paused.", 0)
+
+    def resume(self):
+        self.is_paused = False
+        self.progress.emit("Download process resumed.", 0)
+
     def stop(self): 
         self.is_stopped = True
         self.is_paused = False
+        self.progress.emit("Stopping download process...", 0)
 
 class SpotifyUrlInput(QLineEdit):
     def __init__(self, parent=None):
@@ -118,11 +164,30 @@ class spddlGUI(QWidget):
             'title': Qt.SortOrder.AscendingOrder,
             'artist': Qt.SortOrder.AscendingOrder
         }
+        self.elapsed_time = QTime(0, 0, 0)
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_timer)
+        
         self.initUI()
+
+    def update_timer(self):
+        self.elapsed_time = self.elapsed_time.addSecs(1)
+        self.time_label.setText(self.elapsed_time.toString("hh:mm:ss"))
+    
+    def start_timer(self):
+        self.elapsed_time = QTime(0, 0, 0)
+        self.time_label.setText("00:00:00")
+        self.time_label.show()
+        self.timer.start(1000)
+    
+    def stop_timer(self):
+        self.timer.stop()
+        self.time_label.hide()
 
     def initUI(self):
         self.setWindowTitle('spddl GUI')
-        self.setFixedSize(700, 500)
+        self.setFixedWidth(650)
+        self.setMinimumHeight(400)
         
         self.icon_path = os.path.join(os.path.dirname(__file__), "icon.svg")
         if os.path.exists(self.icon_path):
@@ -209,22 +274,29 @@ class spddlGUI(QWidget):
         self.info_widget = QWidget()
         info_layout = QHBoxLayout()
         self.cover_label = QLabel()
-        self.cover_label.setFixedSize(75, 75)
+        self.cover_label.setFixedSize(80, 80)
         self.cover_label.setScaledContents(True)
         info_layout.addWidget(self.cover_label)
 
         text_info_layout = QVBoxLayout()
+        
         self.title_label = QLabel()
         self.title_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         self.title_label.setWordWrap(True)
+        
         self.artists_label = QLabel()
         self.artists_label.setWordWrap(True)
+        
         self.release_date_label = QLabel()
         self.release_date_label.setWordWrap(True)
+        
+        self.type_label = QLabel()
+        self.type_label.setStyleSheet("font-size: 12px;")
         
         text_info_layout.addWidget(self.title_label)
         text_info_layout.addWidget(self.artists_label)
         text_info_layout.addWidget(self.release_date_label)
+        text_info_layout.addWidget(self.type_label)
         text_info_layout.addStretch()
 
         info_layout.addLayout(text_info_layout, 1)
@@ -267,6 +339,11 @@ class spddlGUI(QWidget):
         self.log_output.setReadOnly(True)
         self.progress_bar = QProgressBar()
         self.progress_bar.hide()
+        
+        self.time_label = QLabel("00:00:00")
+        self.time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.time_label.hide()
+        
         control_layout = QHBoxLayout()
         self.stop_btn = QPushButton('Stop')
         self.pause_resume_btn = QPushButton('Pause')
@@ -276,8 +353,10 @@ class spddlGUI(QWidget):
         self.pause_resume_btn.hide()
         control_layout.addWidget(self.stop_btn)
         control_layout.addWidget(self.pause_resume_btn)
+        
         process_layout.addWidget(self.log_output)
         process_layout.addWidget(self.progress_bar)
+        process_layout.addWidget(self.time_label)
         process_layout.addLayout(control_layout)
         self.process_tab.setLayout(process_layout)
         self.tab_widget.addTab(self.process_tab, "Process")
@@ -286,9 +365,10 @@ class spddlGUI(QWidget):
         history_layout = QVBoxLayout()
         self.history_list = QListWidget()
         self.history_list.itemClicked.connect(self.load_history_item)
+        self.history_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.history_list.customContextMenuRequested.connect(self.show_history_context_menu)
         history_layout.addWidget(self.history_list)
 
-        # Create sort buttons
         self.sort_buttons_layout = QHBoxLayout()
         self.sort_buttons = []
         for sort_option in ['Type', 'Date', 'Title', 'Artist']:
@@ -299,6 +379,7 @@ class spddlGUI(QWidget):
 
         history_layout.addLayout(self.sort_buttons_layout)
         history_tab.setLayout(history_layout)
+        
         self.tab_widget.addTab(history_tab, "History")
         self.update_history_list()
 
@@ -370,6 +451,9 @@ class spddlGUI(QWidget):
         directory = QFileDialog.getExistingDirectory(self, "Select Output Directory")
         if directory: self.output_dir.setText(directory)
 
+    def reset_window_size(self):
+        self.resize(self.width(), 400)
+
     def fetch_tracks(self):
         url = self.spotify_url.text().strip()
         
@@ -395,10 +479,14 @@ class spddlGUI(QWidget):
                 self.tracks, self.album_or_playlist_name = get_album_info(url)
                 self.is_album, self.is_playlist, self.is_single_track = True, False, False
                 item_type = "Album"
+                # Show popup only for albums
+                QMessageBox.information(self, 'Success', f'Fetched {len(self.tracks)} track{"" if len(self.tracks) == 1 else "s"}.')
             elif "playlist" in url:
                 self.tracks, self.album_or_playlist_name = get_playlist_info(url)
                 self.is_album, self.is_playlist, self.is_single_track = False, True, False
                 item_type = "Playlist"
+                # Show popup only for playlists
+                QMessageBox.information(self, 'Success', f'Fetched {len(self.tracks)} track{"" if len(self.tracks) == 1 else "s"}.')
             else:
                 track_info = get_track_info(url)
                 self.tracks = [Song(
@@ -411,6 +499,7 @@ class spddlGUI(QWidget):
                 self.is_album, self.is_playlist, self.is_single_track = False, False, True
                 self.album_or_playlist_name = f"{self.tracks[0].title} - {self.tracks[0].artists}"
                 item_type = "Track"
+                # No popup for single tracks
 
             if self.is_single_track:
                 self.track_list.hide()
@@ -425,16 +514,16 @@ class spddlGUI(QWidget):
             
             self.update_info_widget(widget_info)
             
-            QMessageBox.information(self, 'Success', f'Fetched {len(self.tracks)} track{"" if len(self.tracks) == 1 else "s"}.')
-            
             self.update_button_states()
             self.tab_widget.setCurrentIndex(0)
+            self.reset_window_size()
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'An error occurred: {str(e)}')
 
     def update_info_widget(self, widget_info):
         self.title_label.setText(widget_info['title'])
         self.artists_label.setText(widget_info['artist'])
+        
         if widget_info['releaseDate']:
             release_date = datetime.strptime(widget_info['releaseDate'], "%Y-%m-%d")
             formatted_date = release_date.strftime("%d-%m-%Y")
@@ -442,6 +531,13 @@ class spddlGUI(QWidget):
             self.release_date_label.show()
         else:
             self.release_date_label.hide()
+        
+        if self.is_single_track:
+            self.type_label.setText("Track")
+        elif self.is_album:
+            self.type_label.setText("Album")
+        elif self.is_playlist:
+            self.type_label.setText("Playlist")
         
         self.network_manager = QNetworkAccessManager()
         self.network_manager.finished.connect(self.on_cover_loaded)
@@ -452,6 +548,7 @@ class spddlGUI(QWidget):
     def reset_info_widget(self):
         self.title_label.clear()
         self.artists_label.clear()
+        self.type_label.clear()
         self.release_date_label.clear()
         self.cover_label.clear()
         self.info_widget.hide()
@@ -479,6 +576,9 @@ class spddlGUI(QWidget):
         
         self.download_all_btn.show()
         self.clear_btn.show()
+        
+        self.download_selected_btn.setEnabled(True)
+        self.download_all_btn.setEnabled(True)
 
     def hide_track_buttons(self):
         for btn in [self.download_selected_btn, self.download_all_btn, self.remove_btn, self.clear_btn]:
@@ -495,7 +595,10 @@ class spddlGUI(QWidget):
             self.download_tracks([self.track_list.row(item) for item in selected_items])
 
     def download_all(self):
-        self.download_tracks(range(self.track_list.count()))
+        if self.is_single_track:
+            self.download_tracks([0])
+        else:
+            self.download_tracks(range(self.track_list.count()))
 
     def download_tracks(self, indices):
         self.log_output.clear()
@@ -504,7 +607,11 @@ class spddlGUI(QWidget):
             QMessageBox.warning(self, 'Warning', 'Invalid output directory.')
             return
 
-        tracks_to_download = [self.tracks[i] for i in indices]
+        if self.is_single_track:
+            tracks_to_download = self.tracks
+        else:
+            tracks_to_download = [self.tracks[i] for i in indices]
+
         download_method = "spotifydown" if self.server_select.currentIndex() == 0 else "yank"
 
         if self.is_album or self.is_playlist:
@@ -513,11 +620,13 @@ class spddlGUI(QWidget):
             os.makedirs(outpath, exist_ok=True)
 
         self.worker = DownloadWorker(tracks_to_download, outpath, download_method, 
-                                    self.is_album, self.is_playlist, self.album_or_playlist_name)
+                                    self.is_single_track, self.is_album, self.is_playlist, 
+                                    self.album_or_playlist_name)
         self.worker.finished.connect(self.on_download_finished)
         self.worker.progress.connect(self.update_progress)
         self.worker.start()
-
+        self.start_timer()
+        
         self.download_selected_btn.setEnabled(False)
         self.download_all_btn.setEnabled(False)
         self.stop_btn.show()
@@ -530,18 +639,21 @@ class spddlGUI(QWidget):
     def update_progress(self, message, percentage):
         self.log_output.append(message)
         self.log_output.moveCursor(QTextCursor.MoveOperation.End)
-        self.progress_bar.setValue(percentage)
+        if percentage > 0:
+            self.progress_bar.setValue(percentage)
 
     def stop_download(self):
         if hasattr(self, 'worker'):
             self.worker.stop()
+        self.stop_timer()
         self.on_download_finished(True, "Download stopped by user.")
-
+    
     def toggle_pause_resume(self):
         if hasattr(self, 'worker'):
             if self.worker.is_paused:
                 self.worker.resume()
                 self.pause_resume_btn.setText('Pause')
+                self.timer.start(1000)
             else:
                 self.worker.pause()
                 self.pause_resume_btn.setText('Resume')
@@ -551,14 +663,17 @@ class spddlGUI(QWidget):
         self.log_output.moveCursor(QTextCursor.MoveOperation.End)
 
     def on_download_finished(self, success, message):
-        self.download_selected_btn.setEnabled(not self.is_single_track)
+        self.stop_timer()
+        
+        self.download_selected_btn.setEnabled(True)
         self.download_all_btn.setEnabled(True)
         self.stop_btn.hide()
         self.pause_resume_btn.hide()
         self.pause_resume_btn.setText('Pause')
 
         if success:
-            QMessageBox.information(self, 'Success', message)
+            elapsed_time = self.elapsed_time.toString("hh:mm:ss")
+            QMessageBox.information(self, 'Success', f"{message}\nTotal time: {elapsed_time}")
         else:
             QMessageBox.critical(self, 'Error', f'An error occurred: {message}')
 
@@ -581,6 +696,11 @@ class spddlGUI(QWidget):
         self.pause_resume_btn.setText('Pause')
         self.reset_info_widget()
         self.spotify_url.clear()
+        self.reset_window_size()
+
+    def hide_track_buttons(self):
+        for btn in [self.download_selected_btn, self.download_all_btn, self.remove_btn, self.clear_btn]:
+            btn.hide()
 
     def toggle_sort_buttons(self):
         if self.history:
@@ -597,7 +717,7 @@ class spddlGUI(QWidget):
         
         self.history = [item for item in self.history if item.url != new_item.url]
         self.history.insert(0, new_item)
-        self.history = self.history[:20]
+        self.history = self.history[:100]
         self.save_history()
         self.toggle_sort_buttons()
 
@@ -652,6 +772,21 @@ class spddlGUI(QWidget):
                     self.history.append(HistoryItem(url, title, artist, item_type, date))
                 except ValueError:
                     print(f"Error parsing history item: {value}")
+
+    def show_history_context_menu(self, position):
+        menu = QMenu()
+        delete_action = menu.addAction(QIcon.fromTheme("edit-delete"), "Delete")
+        action = menu.exec(self.history_list.mapToGlobal(position))
+        if action == delete_action:
+            self.delete_history_item()
+
+    def delete_history_item(self):
+        current_item = self.history_list.currentItem()
+        if current_item:
+            index = self.history_list.row(current_item)
+            del self.history[index]
+            self.update_history_list()
+            self.save_history()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
