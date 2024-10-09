@@ -6,16 +6,16 @@ from datetime import datetime
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
-    QLabel, QFileDialog, QListWidget, QMessageBox, QTextEdit, QComboBox,
-    QTabWidget, QAbstractItemView, QSpacerItem, QSizePolicy, QProgressBar, QMenu
+    QLabel, QFileDialog, QListWidget, QMessageBox, QTextEdit, QTabWidget,
+    QAbstractItemView, QSpacerItem, QSizePolicy, QProgressBar, QMenu
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize, QTimer, QTime
 from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap, QKeySequence
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 from spddl import (
-    get_track_info, get_album_info, get_playlist_info, download_track_spotifydown,
-    download_track_yank, sanitize_filename, Song, get_widget_info
+    get_track_info, get_album_info, get_playlist_info, download_track,
+    sanitize_filename, Song, get_widget_info
 )
 
 # Utility Functions
@@ -47,11 +47,10 @@ class DownloadWorker(QThread):
     finished = pyqtSignal(bool, str)
     progress = pyqtSignal(str, int)
     
-    def __init__(self, tracks, outpath, download_method, is_single_track=False, is_album=False, is_playlist=False, album_or_playlist_name=''):
+    def __init__(self, tracks, outpath, is_single_track=False, is_album=False, is_playlist=False, album_or_playlist_name=''):
         super().__init__()
         self.tracks = tracks
         self.outpath = outpath
-        self.download_method = download_method
         self.is_single_track = is_single_track
         self.is_album = is_album
         self.is_playlist = is_playlist
@@ -76,10 +75,7 @@ class DownloadWorker(QThread):
         self.progress.emit(f"Starting download: {track.title} - {track.artists}", 0)
         
         try:
-            if self.download_method == "spotifydown":
-                download_track_spotifydown(track, self.outpath)
-            else:
-                download_track_yank(track, self.outpath)
+            download_track(track, self.outpath)
             self.progress.emit(f"Downloaded successfully: {track.title} - {track.artists}", 100)
             self.finished.emit(True, "Download completed successfully!")
         except Exception as e:
@@ -100,10 +96,7 @@ class DownloadWorker(QThread):
             self.progress.emit(f"Starting download ({i+1}/{total_tracks}): {track.title} - {track.artists}", 0)
             
             try:
-                if self.download_method == "spotifydown":
-                    download_track_spotifydown(track, self.outpath)
-                else:
-                    download_track_yank(track, self.outpath)
+                download_track(track, self.outpath)
                 progress_percentage = int((i + 1) / total_tracks * 100)
                 self.progress.emit(f"Downloaded successfully ({i+1}/{total_tracks}): {track.title} - {track.artists}", progress_percentage)
             except Exception as e:
@@ -196,13 +189,12 @@ class SpddlGUI(QWidget):
     def initUI(self):
         self.setWindowTitle('spddl GUI')
         self.setFixedWidth(650)
-        self.setMinimumHeight(400)
+        self.setMinimumHeight(365)
         
         self.setup_icon()
         self.setup_layouts()
         self.setup_spotify_section()
         self.setup_output_section()
-        self.setup_server_section()
         self.setup_tabs()
         
         self.setLayout(self.main_layout)
@@ -254,19 +246,6 @@ class SpddlGUI(QWidget):
         output_layout.addWidget(self.open_dir_btn)
         output_layout.addWidget(self.output_browse)
         self.main_layout.addLayout(output_layout)
-
-    def setup_server_section(self):
-        server_layout = QHBoxLayout()
-        server_label = QLabel('Server:')
-        server_label.setFixedWidth(100)
-        self.server_select = QComboBox()
-        spotifydown_icon = QIcon(os.path.join(os.path.dirname(__file__), "SpotifyDown.png"))
-        yank_icon = QIcon(os.path.join(os.path.dirname(__file__), "Yank.png"))
-        self.server_select.addItem(spotifydown_icon, "SpotifyDown (320 kbps)")
-        self.server_select.addItem(yank_icon, "Yank (128 kbps)")
-        server_layout.addWidget(server_label)
-        server_layout.addWidget(self.server_select)
-        self.main_layout.addLayout(server_layout)
 
     def setup_tabs(self):
         self.tab_widget = QTabWidget()
@@ -375,6 +354,7 @@ class SpddlGUI(QWidget):
         process_layout.addWidget(self.time_label)
         process_layout.addLayout(control_layout)
         self.process_tab.setLayout(process_layout)
+        
         self.tab_widget.addTab(self.process_tab, "Process")
 
     def setup_history_tab(self):
@@ -644,14 +624,12 @@ class SpddlGUI(QWidget):
         else:
             tracks_to_download = [self.tracks[i] for i in indices]
 
-        download_method = "spotifydown" if self.server_select.currentIndex() == 0 else "yank"
-
         if self.is_album or self.is_playlist:
             folder_name = sanitize_filename(self.album_or_playlist_name)
             outpath = os.path.join(outpath, folder_name)
             os.makedirs(outpath, exist_ok=True)
 
-        self.worker = DownloadWorker(tracks_to_download, outpath, download_method, 
+        self.worker = DownloadWorker(tracks_to_download, outpath, 
                                     self.is_single_track, self.is_album, self.is_playlist, 
                                     self.album_or_playlist_name)
         self.worker.finished.connect(self.on_download_finished)
@@ -847,7 +825,7 @@ class SpddlGUI(QWidget):
 
     # UI Utility Methods
     def reset_window_size(self):
-        self.resize(self.width(), 400)
+        self.resize(self.width(), 365)
 
     def setup_button(self, button, icon_name, tooltip, callback):
         icon_path = os.path.join(os.path.dirname(__file__), icon_name)
