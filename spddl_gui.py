@@ -1,24 +1,39 @@
-import sys, os, configparser
+import sys
+import os
+import configparser
 from dataclasses import dataclass
 from datetime import datetime
-from PyQt6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QLabel, QFileDialog, 
-                             QListWidget, QMessageBox, QTextEdit, QComboBox, QTabWidget, QAbstractItemView, QSpacerItem, 
-                             QSizePolicy, QProgressBar, QMenu)
+
+from PyQt6.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
+    QLabel, QFileDialog, QListWidget, QMessageBox, QTextEdit, QComboBox,
+    QTabWidget, QAbstractItemView, QSpacerItem, QSizePolicy, QProgressBar, QMenu
+)
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize, QTimer, QTime
 from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap, QKeySequence
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
-from spddl import get_track_info, get_album_info, get_playlist_info, download_track_spotifydown, download_track_yank, sanitize_filename, Song, get_widget_info
 
+from spddl import (
+    get_track_info, get_album_info, get_playlist_info, download_track_spotifydown,
+    download_track_yank, sanitize_filename, Song, get_widget_info
+)
+
+# Utility Functions
 def configure_io_encoding():
     try:
-        if sys.stdout: sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-        if sys.stderr: sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+        if sys.stdout:
+            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if sys.stderr:
+            sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     except (AttributeError, IOError):
-        if sys.stdout: sys.stdout.encoding = 'utf-8'
-        if sys.stderr: sys.stderr.encoding = 'utf-8'
+        if sys.stdout:
+            sys.stdout.encoding = 'utf-8'
+        if sys.stderr:
+            sys.stderr.encoding = 'utf-8'
 
 configure_io_encoding()
 
+# Data Classes
 @dataclass
 class HistoryItem:
     url: str
@@ -27,6 +42,7 @@ class HistoryItem:
     type: str
     date: str
 
+# Thread Classes
 class DownloadWorker(QThread):
     finished = pyqtSignal(bool, str)
     progress = pyqtSignal(str, int)
@@ -112,6 +128,7 @@ class DownloadWorker(QThread):
         self.is_paused = False
         self.progress.emit("Stopping download process...", 0)
 
+# Custom Widget Classes
 class SpotifyUrlInput(QLineEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -150,7 +167,8 @@ class SpotifyUrlInput(QLineEdit):
             return
         super().keyPressEvent(event)
 
-class spddlGUI(QWidget):
+# Main Application Class
+class SpddlGUI(QWidget):
     def __init__(self):
         super().__init__()
         self.tracks = []
@@ -170,45 +188,32 @@ class spddlGUI(QWidget):
         
         self.initUI()
 
-    def update_timer(self):
-        self.elapsed_time = self.elapsed_time.addSecs(1)
-        self.time_label.setText(self.elapsed_time.toString("hh:mm:ss"))
-    
-    def start_timer(self):
-        self.elapsed_time = QTime(0, 0, 0)
-        self.time_label.setText("00:00:00")
-        self.time_label.show()
-        self.timer.start(1000)
-    
-    def stop_timer(self):
-        self.timer.stop()
-        self.time_label.hide()
-
+    # UI Setup Methods
     def initUI(self):
         self.setWindowTitle('spddl GUI')
         self.setFixedWidth(650)
         self.setMinimumHeight(400)
         
+        self.setup_icon()
+        self.setup_layouts()
+        self.setup_spotify_section()
+        self.setup_output_section()
+        self.setup_server_section()
+        self.setup_tabs()
+        
+        self.setLayout(self.main_layout)
+
+    def setup_icon(self):
         self.icon_path = os.path.join(os.path.dirname(__file__), "icon.svg")
         if os.path.exists(self.icon_path):
             self.setWindowIcon(QIcon(self.icon_path))
         else:
             print("Warning: Icon file 'icon.svg' not found.")
-        
-        icon_size = QSize(16, 16)
-        paste_icon_path = os.path.join(os.path.dirname(__file__), "paste.svg")
-        folder_icon_path = os.path.join(os.path.dirname(__file__), "folder.svg")
-        
-        paste_icon = QIcon(paste_icon_path) if os.path.exists(paste_icon_path) else QIcon()
-        folder_icon = QIcon(folder_icon_path) if os.path.exists(folder_icon_path) else QIcon()
-        
-        if not paste_icon.availableSizes():
-            print("Warning: Paste icon 'paste.svg' not found.")
-        if not folder_icon.availableSizes():
-            print("Warning: Folder icon 'folder.svg' not found.")
-        
-        main_layout = QVBoxLayout()
-        
+
+    def setup_layouts(self):
+        self.main_layout = QVBoxLayout()
+
+    def setup_spotify_section(self):
         spotify_layout = QHBoxLayout()
         spotify_label = QLabel('Spotify URL:')
         spotify_label.setFixedWidth(100)
@@ -216,11 +221,7 @@ class spddlGUI(QWidget):
         self.spotify_url = SpotifyUrlInput()
         
         self.paste_btn = QPushButton()
-        self.paste_btn.setIcon(paste_icon)
-        self.paste_btn.setIconSize(icon_size)
-        self.paste_btn.setFixedSize(24, 24)
-        self.paste_btn.setToolTip('Paste from clipboard')
-        self.paste_btn.clicked.connect(self.spotify_url.validate_and_paste)
+        self.setup_button(self.paste_btn, "paste.svg", "Paste from clipboard", self.spotify_url.validate_and_paste)
         
         self.fetch_btn = QPushButton('Fetch')
         self.fetch_btn.clicked.connect(self.fetch_tracks)
@@ -229,8 +230,9 @@ class spddlGUI(QWidget):
         spotify_layout.addWidget(self.spotify_url)
         spotify_layout.addWidget(self.paste_btn)
         spotify_layout.addWidget(self.fetch_btn)
-        main_layout.addLayout(spotify_layout)
+        self.main_layout.addLayout(spotify_layout)
 
+    def setup_output_section(self):
         output_layout = QHBoxLayout()
         output_label = QLabel('Output Directory:')
         output_label.setFixedWidth(100)
@@ -238,11 +240,7 @@ class spddlGUI(QWidget):
         self.output_dir.setText(os.path.expanduser("~\\Music"))
         
         self.open_dir_btn = QPushButton()
-        self.open_dir_btn.setIcon(folder_icon)
-        self.open_dir_btn.setIconSize(icon_size)
-        self.open_dir_btn.setFixedSize(24, 24)
-        self.open_dir_btn.setToolTip('Open output directory')
-        self.open_dir_btn.clicked.connect(self.open_output_dir)
+        self.setup_button(self.open_dir_btn, "folder.svg", "Open output directory", self.open_output_dir)
         
         self.output_browse = QPushButton('Browse')
         self.output_browse.clicked.connect(self.browse_output)
@@ -251,8 +249,9 @@ class spddlGUI(QWidget):
         output_layout.addWidget(self.output_dir)
         output_layout.addWidget(self.open_dir_btn)
         output_layout.addWidget(self.output_browse)
-        main_layout.addLayout(output_layout)
+        self.main_layout.addLayout(output_layout)
 
+    def setup_server_section(self):
         server_layout = QHBoxLayout()
         server_label = QLabel('Server:')
         server_label.setFixedWidth(100)
@@ -263,14 +262,37 @@ class spddlGUI(QWidget):
         self.server_select.addItem(yank_icon, "Yank (128 kbps)")
         server_layout.addWidget(server_label)
         server_layout.addWidget(self.server_select)
-        main_layout.addLayout(server_layout)
+        self.main_layout.addLayout(server_layout)
 
+    def setup_tabs(self):
         self.tab_widget = QTabWidget()
-        main_layout.addWidget(self.tab_widget)
+        self.main_layout.addWidget(self.tab_widget)
 
+        self.setup_tracks_tab()
+        self.setup_process_tab()
+        self.setup_history_tab()
+        self.setup_about_tab()
+
+    def setup_tracks_tab(self):
         tracks_tab = QWidget()
         tracks_layout = QVBoxLayout()
 
+        self.setup_info_widget()
+        tracks_layout.addWidget(self.info_widget)
+
+        self.track_list = QListWidget()
+        self.track_list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        tracks_layout.addWidget(self.track_list)
+        
+        self.setup_track_buttons()
+        tracks_layout.addLayout(self.btn_layout)
+
+        tracks_tab.setLayout(tracks_layout)
+        self.tab_widget.addTab(tracks_tab, "Tracks")
+
+        self.hide_track_buttons()
+
+    def setup_info_widget(self):
         self.info_widget = QWidget()
         info_layout = QHBoxLayout()
         self.cover_label = QLabel()
@@ -304,12 +326,7 @@ class spddlGUI(QWidget):
         self.info_widget.setFixedHeight(100)
         self.info_widget.hide()
 
-        tracks_layout.addWidget(self.info_widget)
-
-        self.track_list = QListWidget()
-        self.track_list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        tracks_layout.addWidget(self.track_list)
-        
+    def setup_track_buttons(self):
         self.btn_layout = QHBoxLayout()
         self.download_selected_btn = QPushButton('Download Selected')
         self.download_all_btn = QPushButton('Download All')
@@ -326,13 +343,8 @@ class spddlGUI(QWidget):
         for btn in [self.download_selected_btn, self.download_all_btn, self.remove_btn, self.clear_btn]:
             self.btn_layout.addWidget(btn)
         self.btn_layout.addStretch()
-        
-        tracks_layout.addLayout(self.btn_layout)
-        tracks_tab.setLayout(tracks_layout)
-        self.tab_widget.addTab(tracks_tab, "Tracks")
 
-        self.hide_track_buttons()
-
+    def setup_process_tab(self):
         self.process_tab = QWidget()
         process_layout = QVBoxLayout()
         self.log_output = QTextEdit()
@@ -361,6 +373,7 @@ class spddlGUI(QWidget):
         self.process_tab.setLayout(process_layout)
         self.tab_widget.addTab(self.process_tab, "Process")
 
+    def setup_history_tab(self):
         history_tab = QWidget()
         history_layout = QVBoxLayout()
         self.history_list = QListWidget()
@@ -383,6 +396,7 @@ class spddlGUI(QWidget):
         self.tab_widget.addTab(history_tab, "History")
         self.update_history_list()
 
+    def setup_about_tab(self):
         about_tab = QWidget()
         about_layout = QVBoxLayout()
         about_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -438,8 +452,7 @@ class spddlGUI(QWidget):
         about_tab.setLayout(about_layout)
         self.tab_widget.addTab(about_tab, "About")
 
-        self.setLayout(main_layout)
-
+    # Action Methods
     def open_output_dir(self):
         path = self.output_dir.text()
         if os.path.exists(path):
@@ -449,11 +462,10 @@ class spddlGUI(QWidget):
 
     def browse_output(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Output Directory")
-        if directory: self.output_dir.setText(directory)
+        if directory:
+            self.output_dir.setText(directory)
 
-    def reset_window_size(self):
-        self.resize(self.width(), 400)
-
+    # Fetch and Display Methods
     def fetch_tracks(self):
         url = self.spotify_url.text().strip()
         
@@ -479,13 +491,11 @@ class spddlGUI(QWidget):
                 self.tracks, self.album_or_playlist_name = get_album_info(url)
                 self.is_album, self.is_playlist, self.is_single_track = True, False, False
                 item_type = "Album"
-                # Show popup only for albums
                 QMessageBox.information(self, 'Success', f'Fetched {len(self.tracks)} track{"" if len(self.tracks) == 1 else "s"}.')
             elif "playlist" in url:
                 self.tracks, self.album_or_playlist_name = get_playlist_info(url)
                 self.is_album, self.is_playlist, self.is_single_track = False, True, False
                 item_type = "Playlist"
-                # Show popup only for playlists
                 QMessageBox.information(self, 'Success', f'Fetched {len(self.tracks)} track{"" if len(self.tracks) == 1 else "s"}.')
             else:
                 track_info = get_track_info(url)
@@ -499,26 +509,28 @@ class spddlGUI(QWidget):
                 self.is_album, self.is_playlist, self.is_single_track = False, False, True
                 self.album_or_playlist_name = f"{self.tracks[0].title} - {self.tracks[0].artists}"
                 item_type = "Track"
-                # No popup for single tracks
 
-            if self.is_single_track:
-                self.track_list.hide()
-            else:
-                self.track_list.show()
-                self.track_list.clear()
-                for i, track in enumerate(self.tracks, 1):
-                    self.track_list.addItem(f"{i}. {track.title} - {track.artists}")
-            
-            self.add_to_history(url, widget_info['title'], widget_info['artist'], item_type)
-            self.update_history_list()
-            
-            self.update_info_widget(widget_info)
-            
-            self.update_button_states()
-            self.tab_widget.setCurrentIndex(0)
-            self.reset_window_size()
+            self.update_display_after_fetch(widget_info, item_type, url)
         except Exception as e:
             QMessageBox.critical(self, 'Error', f'An error occurred: {str(e)}')
+
+    def update_display_after_fetch(self, widget_info, item_type, url):
+        if self.is_single_track:
+            self.track_list.hide()
+        else:
+            self.track_list.show()
+            self.track_list.clear()
+            for i, track in enumerate(self.tracks, 1):
+                self.track_list.addItem(f"{i}. {track.title} - {track.artists}")
+        
+        self.add_to_history(url, widget_info['title'], widget_info['artist'], item_type)
+        self.update_history_list()
+        
+        self.update_info_widget(widget_info)
+        
+        self.update_button_states()
+        self.tab_widget.setCurrentIndex(0)
+        self.reset_window_size()
 
     def update_info_widget(self, widget_info):
         self.title_label.setText(widget_info['title'])
@@ -584,6 +596,7 @@ class spddlGUI(QWidget):
         for btn in [self.download_selected_btn, self.download_all_btn, self.remove_btn, self.clear_btn]:
             btn.hide()
 
+    # Download Methods
     def download_selected(self):
         if self.is_single_track:
             self.download_all()
@@ -627,6 +640,9 @@ class spddlGUI(QWidget):
         self.worker.start()
         self.start_timer()
         
+        self.update_ui_for_download_start()
+
+    def update_ui_for_download_start(self):
         self.download_selected_btn.setEnabled(False)
         self.download_all_btn.setEnabled(False)
         self.stop_btn.show()
@@ -677,6 +693,7 @@ class spddlGUI(QWidget):
         else:
             QMessageBox.critical(self, 'Error', f'An error occurred: {message}')
 
+    # Track Management Methods
     def remove_selected_tracks(self):
         if not self.is_single_track:
             for item in self.track_list.selectedItems()[::-1]:
@@ -698,10 +715,7 @@ class spddlGUI(QWidget):
         self.spotify_url.clear()
         self.reset_window_size()
 
-    def hide_track_buttons(self):
-        for btn in [self.download_selected_btn, self.download_all_btn, self.remove_btn, self.clear_btn]:
-            btn.hide()
-
+    # History Management Methods
     def toggle_sort_buttons(self):
         if self.history:
             for btn in self.sort_buttons:
@@ -788,8 +802,36 @@ class spddlGUI(QWidget):
             self.update_history_list()
             self.save_history()
 
+    # Timer Methods
+    def update_timer(self):
+        self.elapsed_time = self.elapsed_time.addSecs(1)
+        self.time_label.setText(self.elapsed_time.toString("hh:mm:ss"))
+    
+    def start_timer(self):
+        self.elapsed_time = QTime(0, 0, 0)
+        self.time_label.setText("00:00:00")
+        self.time_label.show()
+        self.timer.start(1000)
+    
+    def stop_timer(self):
+        self.timer.stop()
+        self.time_label.hide()
+
+    # UI Utility Methods
+    def reset_window_size(self):
+        self.resize(self.width(), 400)
+
+    def setup_button(self, button, icon_name, tooltip, callback):
+        icon_path = os.path.join(os.path.dirname(__file__), icon_name)
+        icon = QIcon(icon_path) if os.path.exists(icon_path) else QIcon()
+        button.setIcon(icon)
+        button.setIconSize(QSize(16, 16))
+        button.setFixedSize(24, 24)
+        button.setToolTip(tooltip)
+        button.clicked.connect(callback)
+
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = spddlGUI()
+    ex = SpddlGUI()
     ex.show()
     sys.exit(app.exec())
