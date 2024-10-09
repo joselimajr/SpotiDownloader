@@ -176,6 +176,7 @@ class SpddlGUI(QWidget):
         self.is_album = self.is_playlist = self.is_single_track = False
         self.history = []
         self.load_history()
+        self.load_last_output_path()
         self.sort_order = {
             'type': Qt.SortOrder.AscendingOrder,
             'date': Qt.SortOrder.DescendingOrder,
@@ -187,6 +188,9 @@ class SpddlGUI(QWidget):
         self.timer.timeout.connect(self.update_timer)
         
         self.initUI()
+        
+        # Connect the history list signal after the UI is set up
+        self.history_list.itemSelectionChanged.connect(self.on_history_selection_changed)
 
     # UI Setup Methods
     def initUI(self):
@@ -237,7 +241,7 @@ class SpddlGUI(QWidget):
         output_label = QLabel('Output Directory:')
         output_label.setFixedWidth(100)
         self.output_dir = QLineEdit()
-        self.output_dir.setText(os.path.expanduser("~\\Music"))
+        self.output_dir.setText(self.last_output_path)
         
         self.open_dir_btn = QPushButton()
         self.setup_button(self.open_dir_btn, "folder.svg", "Open output directory", self.open_output_dir)
@@ -377,7 +381,7 @@ class SpddlGUI(QWidget):
         history_tab = QWidget()
         history_layout = QVBoxLayout()
         self.history_list = QListWidget()
-        self.history_list.itemClicked.connect(self.load_history_item)
+        self.history_list.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
         self.history_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.history_list.customContextMenuRequested.connect(self.show_history_context_menu)
         history_layout.addWidget(self.history_list)
@@ -464,6 +468,21 @@ class SpddlGUI(QWidget):
         directory = QFileDialog.getExistingDirectory(self, "Select Output Directory")
         if directory:
             self.output_dir.setText(directory)
+            self.save_last_output_path(directory)
+
+    def save_last_output_path(self, path):
+        config = configparser.ConfigParser()
+        config.read('spddl.ini', encoding='utf-8')
+        if 'SETTINGS' not in config:
+            config['SETTINGS'] = {}
+        config['SETTINGS']['last_output_path'] = path
+        with open('spddl.ini', 'w', encoding='utf-8') as configfile:
+            config.write(configfile)
+
+    def load_last_output_path(self):
+        config = configparser.ConfigParser()
+        config.read('spddl.ini', encoding='utf-8')
+        self.last_output_path = config.get('SETTINGS', 'last_output_path', fallback=os.path.expanduser("~\\Music"))
 
     # Fetch and Display Methods
     def fetch_tracks(self):
@@ -763,6 +782,13 @@ class SpddlGUI(QWidget):
         
         self.toggle_sort_buttons()
 
+    def on_history_selection_changed(self):
+        selected_items = self.history_list.selectedItems()
+        if len(selected_items) == 1:
+            self.load_history_item(selected_items[0])
+        else:
+            self.spotify_url.clear()
+
     def load_history_item(self, item):
         index = self.history_list.row(item)
         history_item = self.history[index]
@@ -789,19 +815,21 @@ class SpddlGUI(QWidget):
 
     def show_history_context_menu(self, position):
         menu = QMenu()
-        delete_action = menu.addAction(QIcon.fromTheme("edit-delete"), "Delete")
+        delete_action = menu.addAction(QIcon.fromTheme("edit-delete"), "Delete Selected")
         action = menu.exec(self.history_list.mapToGlobal(position))
         if action == delete_action:
-            self.delete_history_item()
+            self.delete_selected_history_items()
 
-    def delete_history_item(self):
-        current_item = self.history_list.currentItem()
-        if current_item:
-            index = self.history_list.row(current_item)
-            del self.history[index]
+    def delete_selected_history_items(self):
+        selected_items = self.history_list.selectedItems()
+        if selected_items:
+            indices = [self.history_list.row(item) for item in selected_items]
+            indices.sort(reverse=True)
+            for index in indices:
+                del self.history[index]
             self.update_history_list()
             self.save_history()
-
+            
     # Timer Methods
     def update_timer(self):
         self.elapsed_time = self.elapsed_time.addSecs(1)
