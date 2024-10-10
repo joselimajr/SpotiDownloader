@@ -14,8 +14,8 @@ from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap, QKeySeque
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 from spddl import (
-    get_track_info, get_album_info, get_playlist_info, download_track,
-    sanitize_filename, Song, get_widget_info
+    fetch_track_metadata, fetch_album_metadata, fetch_playlist_metadata, download_and_process_track,
+    normalize_filename, TrackMetadata, fetch_spotify_entity_metadata
 )
 
 # Utility Functions
@@ -75,11 +75,11 @@ class DownloadWorker(QThread):
         self.progress.emit(f"Starting download: {track.title} - {track.artists}", 0)
         
         try:
-            download_track(track, self.outpath)
-            self.progress.emit(f"Downloaded successfully: {track.title} - {track.artists}", 100)
+            download_and_process_track(track, self.outpath)
+            self.progress.emit("Downloaded successfully", 100)
             self.finished.emit(True, "Download completed successfully!")
         except Exception as e:
-            self.progress.emit(f"Download failed: {track.title} - {track.artists}. Error: {str(e)}", 0)
+            self.progress.emit("Download failed", 0)
             self.finished.emit(False, f"Download failed: {str(e)}")
 
     def download_multiple_tracks(self, total_tracks):
@@ -96,11 +96,11 @@ class DownloadWorker(QThread):
             self.progress.emit(f"Starting download ({i+1}/{total_tracks}): {track.title} - {track.artists}", 0)
             
             try:
-                download_track(track, self.outpath)
+                download_and_process_track(track, self.outpath)
                 progress_percentage = int((i + 1) / total_tracks * 100)
-                self.progress.emit(f"Downloaded successfully ({i+1}/{total_tracks}): {track.title} - {track.artists}", progress_percentage)
+                self.progress.emit("Downloaded successfully", progress_percentage)
             except Exception as e:
-                self.progress.emit(f"Download failed ({i+1}/{total_tracks}): {track.title} - {track.artists}. Error: {str(e)}", 0)
+                self.progress.emit("Download failed", 0)
                 continue
         
         if i == total_tracks - 1:
@@ -330,32 +330,43 @@ class SpddlGUI(QWidget):
     def setup_process_tab(self):
         self.process_tab = QWidget()
         process_layout = QVBoxLayout()
+        process_layout.setSpacing(5)
+        
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
+        process_layout.addWidget(self.log_output)
+        
+        progress_time_layout = QVBoxLayout()
+        progress_time_layout.setSpacing(2)
+        
         self.progress_bar = QProgressBar()
-        self.progress_bar.hide()
+        progress_time_layout.addWidget(self.progress_bar)
         
         self.time_label = QLabel("00:00:00")
         self.time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.time_label.hide()
+        progress_time_layout.addWidget(self.time_label)
+        
+        process_layout.addLayout(progress_time_layout)
         
         control_layout = QHBoxLayout()
         self.stop_btn = QPushButton('Stop')
         self.pause_resume_btn = QPushButton('Pause')
         self.stop_btn.clicked.connect(self.stop_download)
         self.pause_resume_btn.clicked.connect(self.toggle_pause_resume)
-        self.stop_btn.hide()
-        self.pause_resume_btn.hide()
         control_layout.addWidget(self.stop_btn)
         control_layout.addWidget(self.pause_resume_btn)
         
-        process_layout.addWidget(self.log_output)
-        process_layout.addWidget(self.progress_bar)
-        process_layout.addWidget(self.time_label)
         process_layout.addLayout(control_layout)
+        
         self.process_tab.setLayout(process_layout)
         
         self.tab_widget.addTab(self.process_tab, "Process")
+        
+        # Initially hide progress bar, time label, and control buttons
+        self.progress_bar.hide()
+        self.time_label.hide()
+        self.stop_btn.hide()
+        self.pause_resume_btn.hide()
 
     def setup_history_tab(self):
         history_tab = QWidget()
@@ -484,21 +495,21 @@ class SpddlGUI(QWidget):
         self.clear_tracks()
 
         try:
-            widget_info = get_widget_info(url)
+            widget_info = fetch_spotify_entity_metadata(url)
             
             if "album" in url:
-                self.tracks, self.album_or_playlist_name = get_album_info(url)
+                self.tracks, self.album_or_playlist_name = fetch_album_metadata(url)
                 self.is_album, self.is_playlist, self.is_single_track = True, False, False
                 item_type = "Album"
                 QMessageBox.information(self, 'Success', f'Fetched {len(self.tracks)} track{"" if len(self.tracks) == 1 else "s"}.')
             elif "playlist" in url:
-                self.tracks, self.album_or_playlist_name = get_playlist_info(url)
+                self.tracks, self.album_or_playlist_name = fetch_playlist_metadata(url)
                 self.is_album, self.is_playlist, self.is_single_track = False, True, False
                 item_type = "Playlist"
                 QMessageBox.information(self, 'Success', f'Fetched {len(self.tracks)} track{"" if len(self.tracks) == 1 else "s"}.')
             else:
-                track_info = get_track_info(url)
-                self.tracks = [Song(
+                track_info = fetch_track_metadata(url)
+                self.tracks = [TrackMetadata(
                     title=track_info['metadata']['title'],
                     artists=track_info['metadata']['artists'],
                     album=track_info['metadata'].get('album', 'Unknown Album'),
@@ -625,7 +636,7 @@ class SpddlGUI(QWidget):
             tracks_to_download = [self.tracks[i] for i in indices]
 
         if self.is_album or self.is_playlist:
-            folder_name = sanitize_filename(self.album_or_playlist_name)
+            folder_name = normalize_filename(self.album_or_playlist_name)
             outpath = os.path.join(outpath, folder_name)
             os.makedirs(outpath, exist_ok=True)
 
