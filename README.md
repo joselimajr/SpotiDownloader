@@ -3,7 +3,7 @@
 # spddl GUI
 
 **spddl GUI** is a graphical user interface for downloading Spotify tracks, albums, and playlists directly from Spotify using an API created by SpotifyDown.com
-### [Download](https://github.com/afkarxyz/spddl-GUI/releases/download/spddl/spddl_gui.exe)
+### [Download](https://github.com/afkarxyz/spddl-GUI/releases/download/spddl/spddlGUI.exe)
 #
 #### If you know Userscript [try this,](https://github.com/afkarxyz/Yank-Userscript) and [try this](https://github.com/afkarxyz/spddl) if you're familiar with CLI.
 
