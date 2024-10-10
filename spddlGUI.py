@@ -362,7 +362,6 @@ class SpddlGUI(QWidget):
         
         self.tab_widget.addTab(self.process_tab, "Process")
         
-        # Initially hide progress bar, time label, and control buttons
         self.progress_bar.hide()
         self.time_label.hide()
         self.stop_btn.hide()
