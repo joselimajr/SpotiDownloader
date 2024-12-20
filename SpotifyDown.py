@@ -18,7 +18,7 @@ from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkRepl
 from mutagen.mp3 import MP3
 from mutagen.id3 import APIC, TIT2, TPE1, TALB, TRCK, error
 
-CUSTOM_HEADER = {
+HEADERS = {
     'Host': 'api.spotifydown.com',
     'Referer': 'https://spotifydown.com/',
     'Origin': 'https://spotifydown.com',
@@ -90,7 +90,7 @@ class DownloadWorker(QThread):
     def download_and_process_track(self, track, outpath):
         response = requests.get(
             f"https://api.spotifydown.com/download/{track.id}?token={self.token}", 
-            headers=CUSTOM_HEADER
+            headers=HEADERS
         )
         data = response.json()
         
@@ -161,7 +161,7 @@ class SpotifyDownGUI(QWidget):
         super().__init__()
         self.tracks = []
         self.album_or_playlist_name = ''
-        self.is_album = self.is_playlist = self.is_single_track = False
+        self.reset_state()
         
         self.load_config()
         
@@ -174,6 +174,23 @@ class SpotifyDownGUI(QWidget):
         if hasattr(self, 'last_token') and self.token_input:
             self.token_input.setText(self.last_token)
 
+    def reset_state(self):
+        self.tracks.clear()
+        self.is_album = self.is_playlist = self.is_single_track = False
+        self.album_or_playlist_name = ''
+
+    def reset_ui(self):
+        self.track_list.clear()
+        self.log_output.clear()
+        self.progress_bar.setValue(0)
+        self.progress_bar.hide()
+        self.stop_btn.hide()
+        self.pause_resume_btn.hide()
+        self.pause_resume_btn.setText('Pause')
+        self.reset_info_widget()
+        self.spotify_url.clear()
+        self.reset_window_size()
+
     def get_base_path(self):
         if getattr(sys, 'frozen', False):
             return os.path.dirname(sys.executable)
@@ -181,19 +198,18 @@ class SpotifyDownGUI(QWidget):
             return os.path.dirname(os.path.abspath(__file__))
 
     def load_config(self):
-        try:
-            cache_path = os.path.join(self.get_base_path(), ".cache")
-            if os.path.exists(cache_path):
+        self.last_token = ""
+        self.last_output_path = os.path.expanduser("~\\Music")
+        
+        cache_path = os.path.join(self.get_base_path(), ".cache")
+        if os.path.exists(cache_path):
+            try:
                 with open(cache_path, "r") as f:
                     data = json.load(f)
-                    self.last_token = data.get("token", "")
-                    self.last_output_path = data.get("output_path", os.path.expanduser("~\\Music"))
-            else:
-                self.last_token = ""
-                self.last_output_path = os.path.expanduser("~\\Music")
-        except Exception:
-            self.last_token = ""
-            self.last_output_path = os.path.expanduser("~\\Music")
+                    self.last_token = data.get("token", self.last_token)
+                    self.last_output_path = data.get("output_path", self.last_output_path)
+            except:
+                pass
 
     def save_config(self):
         try:
@@ -233,9 +249,13 @@ class SpotifyDownGUI(QWidget):
         self.spotify_url = QLineEdit()
         
         self.paste_btn = QPushButton()
+        self.fetch_btn = QPushButton('Fetch')
+        
         self.setup_button(self.paste_btn, "paste.svg", "Paste URL from clipboard", self.paste_url)
         
-        self.fetch_btn = QPushButton('Fetch')
+        self.paste_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.fetch_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        
         self.fetch_btn.clicked.connect(self.fetch_tracks)
         
         spotify_layout.addWidget(spotify_label)
@@ -252,9 +272,13 @@ class SpotifyDownGUI(QWidget):
         self.token_input = QLineEdit()
         
         self.token_paste_btn = QPushButton()
+        self.token_save_btn = QPushButton('Save')
+        
         self.setup_button(self.token_paste_btn, "paste.svg", "Paste token from clipboard", self.paste_token)
         
-        self.token_save_btn = QPushButton('Save')
+        self.token_paste_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.token_save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        
         self.token_save_btn.clicked.connect(self.save_token)
         
         token_layout.addWidget(token_label)
@@ -271,9 +295,13 @@ class SpotifyDownGUI(QWidget):
         self.output_dir.setText(self.last_output_path)
         
         self.open_dir_btn = QPushButton()
+        self.output_browse = QPushButton('Browse')
+        
         self.setup_button(self.open_dir_btn, "folder.svg", "Open output directory", self.open_output_dir)
         
-        self.output_browse = QPushButton('Browse')
+        self.open_dir_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.output_browse.setCursor(Qt.CursorShape.PointingHandCursor)
+        
         self.output_browse.clicked.connect(self.browse_output)
         
         output_layout.addWidget(output_label)
@@ -349,8 +377,11 @@ class SpotifyDownGUI(QWidget):
         self.download_all_btn = QPushButton('Download All')
         self.remove_btn = QPushButton('Remove Selected')
         self.clear_btn = QPushButton('Clear All')
+        
         for btn in [self.download_selected_btn, self.download_all_btn, self.remove_btn, self.clear_btn]:
             btn.setFixedWidth(150)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            
         self.download_selected_btn.clicked.connect(self.download_selected)
         self.download_all_btn.clicked.connect(self.download_all)
         self.remove_btn.clicked.connect(self.remove_selected_tracks)
@@ -385,6 +416,10 @@ class SpotifyDownGUI(QWidget):
         control_layout = QHBoxLayout()
         self.stop_btn = QPushButton('Stop')
         self.pause_resume_btn = QPushButton('Pause')
+        
+        self.stop_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.pause_resume_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        
         self.stop_btn.clicked.connect(self.stop_download)
         self.pause_resume_btn.clicked.connect(self.toggle_pause_resume)
         control_layout.addWidget(self.stop_btn)
@@ -412,8 +447,8 @@ class SpotifyDownGUI(QWidget):
         about_layout.addWidget(title_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         sections = [
-            ("Report Issues", "https://github.com/afkarxyz/SpotifyDown-GUI/issues"),
-            ("YouTube", "https://www.youtube.com/channel/UCLPfgkXWjm0qK479Nr1PqBg"),
+            ("SpotifyDown", "http://spotifydown.com/"),
+            ("Issues", "https://github.com/afkarxyz/SpotifyDown-GUI/issues"),
             ("About", "https://github.com/afkarxyz/SpotifyDown-GUI")
         ]
 
@@ -502,26 +537,23 @@ class SpotifyDownGUI(QWidget):
             QMessageBox.warning(self, 'Warning', 'Please enter a Spotify URL.')
             return
 
-        self.reset_info_widget()
-        self.clear_tracks()
+        self.reset_state()
+        self.reset_ui()
 
-        try:
-            if '/track/' in url:
-                self.fetch_single_track(url)
-            else:
-                self.fetch_multiple_tracks(url)
-                
-            self.update_button_states()
-            self.tab_widget.setCurrentIndex(0)
-            self.reset_window_size()
-        except Exception as e:
-            QMessageBox.critical(self, 'Error', str(e))
+        if '/track/' in url:
+            self.fetch_single_track(url)
+        else:
+            self.fetch_multiple_tracks(url)
+            
+        self.update_button_states()
+        self.tab_widget.setCurrentIndex(0)
+        self.reset_window_size()
 
     def fetch_single_track(self, url):
         track_id = url.split("/")[-1].split("?")[0]
         metadata_response = requests.get(
             f"https://api.spotifydown.com/metadata/track/{track_id}",
-            headers=CUSTOM_HEADER
+            headers=HEADERS
         )
         metadata = metadata_response.json()
         
@@ -547,7 +579,7 @@ class SpotifyDownGUI(QWidget):
         
         metadata_response = requests.get(
             f"https://api.spotifydown.com/metadata/{mode}/{item_id}",
-            headers=CUSTOM_HEADER
+            headers=HEADERS
         )
         metadata = metadata_response.json()
         self.album_or_playlist_name = metadata.get('title', 'Unknown Album')
@@ -560,7 +592,7 @@ class SpotifyDownGUI(QWidget):
             try:
                 response = requests.get(
                     f"https://api.spotifydown.com/tracklist/{mode}/{item_id}?offset={offset}",
-                    headers=CUSTOM_HEADER
+                    headers=HEADERS
                 )
                 data = response.json()
                 
@@ -581,10 +613,6 @@ class SpotifyDownGUI(QWidget):
                         track_number=len(self.tracks) + 1
                     ))
                 
-                if total_tracks > 0:
-                    progress = min(100, int((len(self.tracks) / total_tracks) * 100))
-                    self.statusBar().showMessage(f'Fetching tracks... {progress}%')
-                
                 if len(track_list) < 100:
                     break
                 
@@ -597,24 +625,17 @@ class SpotifyDownGUI(QWidget):
         self.is_playlist = (mode == 'playlist')
         self.is_single_track = False
         
-        if hasattr(self, 'statusBar'):
-            self.statusBar().clearMessage()
-        
         self.update_display_after_fetch(metadata)
 
     def update_display_after_fetch(self, metadata):
-        if self.is_single_track:
-            self.track_list.hide()
-        else:
-            self.track_list.show()
+        self.track_list.setVisible(not self.is_single_track)
+        
+        if not self.is_single_track:
             self.track_list.clear()
             for i, track in enumerate(self.tracks, 1):
                 self.track_list.addItem(f"{i}. {track.title} - {track.artists}")
         
         self.update_info_widget(metadata)
-        self.update_button_states()
-        self.tab_widget.setCurrentIndex(0)
-        self.reset_window_size()
 
     def update_info_widget(self, metadata):
         self.title_label.setText(metadata['title'])
@@ -701,34 +722,38 @@ class SpotifyDownGUI(QWidget):
             QMessageBox.warning(self, 'Warning', 'Invalid output directory.')
             return
 
-        if self.is_single_track:
-            tracks_to_download = self.tracks
-        else:
-            tracks_to_download = [self.tracks[i] for i in indices]
+        if not self.token_input.text().strip():
+            QMessageBox.warning(self, "Error", "Please enter a token")
+            return
+
+        tracks_to_download = self.tracks if self.is_single_track else [self.tracks[i] for i in indices]
 
         if self.is_album or self.is_playlist:
             folder_name = re.sub(r'[<>:"/\\|?*]', '_', self.album_or_playlist_name)
             outpath = os.path.join(outpath, folder_name)
             os.makedirs(outpath, exist_ok=True)
 
-        token = self.token_input.text().strip()
-        if not token:
-            QMessageBox.warning(self, "Error", "Please enter a token")
-            return
-
         try:
-            self.worker = DownloadWorker(tracks_to_download, outpath, token,
-                                        self.is_single_track, self.is_album, self.is_playlist, 
-                                        self.album_or_playlist_name)
-            self.worker.finished.connect(self.on_download_finished)
-            self.worker.progress.connect(self.update_progress)
-            self.worker.token_error.connect(self.show_token_error)
-            self.worker.start()
-            self.start_timer()
-            
-            self.update_ui_for_download_start()
+            self.start_download_worker(tracks_to_download, outpath)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred while starting the download: {str(e)}")
+
+    def start_download_worker(self, tracks_to_download, outpath):
+        self.worker = DownloadWorker(
+            tracks_to_download, 
+            outpath, 
+            self.token_input.text().strip(),
+            self.is_single_track, 
+            self.is_album, 
+            self.is_playlist, 
+            self.album_or_playlist_name
+        )
+        self.worker.finished.connect(self.on_download_finished)
+        self.worker.progress.connect(self.update_progress)
+        self.worker.token_error.connect(self.show_token_error)
+        self.worker.start()
+        self.start_timer()
+        self.update_ui_for_download_start()
 
     def update_ui_for_download_start(self):
         self.download_selected_btn.setEnabled(False)
@@ -796,20 +821,8 @@ class SpotifyDownGUI(QWidget):
                 self.track_list.takeItem(self.track_list.row(item))
 
     def clear_tracks(self):
-        self.track_list.clear()
-        self.tracks.clear()
-        self.is_album = self.is_playlist = self.is_single_track = False
-        self.album_or_playlist_name = ''
-        self.hide_track_buttons()
-        self.log_output.clear()
-        self.progress_bar.setValue(0)
-        self.progress_bar.hide()
-        self.stop_btn.hide()
-        self.pause_resume_btn.hide()
-        self.pause_resume_btn.setText('Pause')
-        self.reset_info_widget()
-        self.spotify_url.clear()
-        self.reset_window_size()
+        self.reset_state()
+        self.reset_ui()
 
     def update_timer(self):
         self.elapsed_time = self.elapsed_time.addSecs(1)
@@ -826,7 +839,7 @@ class SpotifyDownGUI(QWidget):
         self.time_label.hide()
 
     def reset_window_size(self):
-        self.resize(self.width(), 365)
+        self.resize(self.width(), 400)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
