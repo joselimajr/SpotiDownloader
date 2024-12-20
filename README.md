@@ -25,10 +25,14 @@
 > Due to updates in the API, a token is required periodically. Follow the steps below to obtain the token.
 
 1. Visit [https://spotifydown.com/](https://spotifydown.com/) and open the **Network** tab in your browser's developer tools (press `F12`).  
-2. While the Network tab is open, press the download button.  
+2. While the Network tab is open, press the download button. Then, press the second download button.
 3. Filter the requests to display only **Fetch/XHR**, then look for `{track_id}?token=` and click on it.  
 4. Open the **Payload** tab.
    
 ![image](https://github.com/user-attachments/assets/00448018-482f-4b19-b143-7b4ee8d9bca9)
 
 5. Copy token value.
+
+### Or you can use this userscript: [SpotifyDown Token Grabber](https://github.com/afkarxyz/SpotifyDown-GUI/raw/refs/heads/main/SpotifyDown.user.js)
+
+![image](https://github.com/user-attachments/assets/3e5ba547-2515-44d1-9db2-0974bf059861)
