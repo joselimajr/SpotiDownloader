@@ -507,63 +507,100 @@ class SpotifyDownGUI(QWidget):
 
         try:
             if '/track/' in url:
-                mode = 'track'
-                track_id = url.split("/")[-1].split("?")[0]
-                metadata_response = requests.get(
-                    f"https://api.spotifydown.com/metadata/track/{track_id}",
-                    headers=CUSTOM_HEADER
-                )
-                metadata = metadata_response.json()
-                
-                if metadata.get('success', False):
-                    self.tracks = [Track(
-                        id=track_id,
-                        title=metadata['title'],
-                        artists=metadata['artists'],
-                        album=metadata.get('album', 'Unknown Album'),
-                        cover_url=metadata.get('cover', ''),
-                        track_number=1
-                    )]
-                    self.is_single_track = True
-                    self.is_album = self.is_playlist = False
-                    self.album_or_playlist_name = f"{self.tracks[0].title} - {self.tracks[0].artists}"
-                else:
-                    raise Exception("Failed to fetch track metadata")
-                
+                self.fetch_single_track(url)
             else:
-                mode = 'playlist' if '/playlist/' in url else 'album'
-                playlist_id = url.split("/")[-1].split("?")[0]
+                self.fetch_multiple_tracks(url)
                 
-                metadata_response = requests.get(
-                    f"https://api.spotifydown.com/metadata/{mode}/{playlist_id}",
-                    headers=CUSTOM_HEADER
-                )
-                metadata = metadata_response.json()
-                self.album_or_playlist_name = metadata.get('title', 'Unknown Album')
-                
+            self.update_button_states()
+            self.tab_widget.setCurrentIndex(0)
+            self.reset_window_size()
+        except Exception as e:
+            QMessageBox.critical(self, 'Error', str(e))
+
+    def fetch_single_track(self, url):
+        track_id = url.split("/")[-1].split("?")[0]
+        metadata_response = requests.get(
+            f"https://api.spotifydown.com/metadata/track/{track_id}",
+            headers=CUSTOM_HEADER
+        )
+        metadata = metadata_response.json()
+        
+        if metadata.get('success', False):
+            self.tracks = [Track(
+                id=track_id,
+                title=metadata['title'],
+                artists=metadata['artists'],
+                album=metadata.get('album', 'Unknown Album'),
+                cover_url=metadata.get('cover', ''),
+                track_number=1
+            )]
+            self.is_single_track = True
+            self.is_album = self.is_playlist = False
+            self.album_or_playlist_name = f"{self.tracks[0].title} - {self.tracks[0].artists}"
+            self.update_display_after_fetch(metadata)
+        else:
+            raise Exception("Failed to fetch track metadata")
+
+    def fetch_multiple_tracks(self, url):
+        mode = 'playlist' if '/playlist/' in url else 'album'
+        item_id = url.split("/")[-1].split("?")[0]
+        
+        metadata_response = requests.get(
+            f"https://api.spotifydown.com/metadata/{mode}/{item_id}",
+            headers=CUSTOM_HEADER
+        )
+        metadata = metadata_response.json()
+        self.album_or_playlist_name = metadata.get('title', 'Unknown Album')
+        
+        self.tracks = []
+        offset = 0
+        total_tracks = None
+        
+        while True:
+            try:
                 response = requests.get(
-                    f"https://api.spotifydown.com/tracklist/{mode}/{playlist_id}",
+                    f"https://api.spotifydown.com/tracklist/{mode}/{item_id}?offset={offset}",
                     headers=CUSTOM_HEADER
                 )
                 data = response.json()
                 
-                self.tracks = []
-                for i, track in enumerate(data['trackList'], 1):
+                if total_tracks is None:
+                    total_tracks = data.get('total', 0)
+                
+                track_list = data.get('trackList', [])
+                if not track_list:
+                    break
+                
+                for track in track_list:
                     self.tracks.append(Track(
                         id=track['id'],
                         title=track['title'],
                         artists=track['artists'],
                         album=self.album_or_playlist_name,
                         cover_url=track.get('cover', metadata.get('cover', '')),
-                        track_number=i
+                        track_number=len(self.tracks) + 1
                     ))
-                self.is_album = (mode == 'album')
-                self.is_playlist = (mode == 'playlist')
-                self.is_single_track = False
-
-            self.update_display_after_fetch(metadata)
-        except Exception as e:
-            QMessageBox.critical(self, 'Error', str(e))
+                
+                if total_tracks > 0:
+                    progress = min(100, int((len(self.tracks) / total_tracks) * 100))
+                    self.statusBar().showMessage(f'Fetching tracks... {progress}%')
+                
+                if len(track_list) < 100:
+                    break
+                
+                offset += 100
+                
+            except Exception as e:
+                raise Exception(f"Error fetching tracks: {str(e)}")
+        
+        self.is_album = (mode == 'album')
+        self.is_playlist = (mode == 'playlist')
+        self.is_single_track = False
+        
+        if hasattr(self, 'statusBar'):
+            self.statusBar().clearMessage()
+        
+        self.update_display_after_fetch(metadata)
 
     def update_display_after_fetch(self, metadata):
         if self.is_single_track:
