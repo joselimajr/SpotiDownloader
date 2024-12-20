@@ -1,31 +1,25 @@
 [![GitHub All Releases](https://img.shields.io/github/downloads/afkarxyz/spddl-GUI/total?style=for-the-badge)](https://github.com/afkarxyz/spddl-GUI/releases)
 
-# spddl GUI
-
-**spddl GUI** is a graphical user interface for downloading Spotify tracks, albums, and playlists directly from Spotify using an API created by SpotifyDown.com
+**SpotifyDown.com GUI** is a graphical user interface for downloading Spotify tracks, albums, and playlists directly from Spotify using an API created by SpotifyDown.com
 ### [Download](https://github.com/afkarxyz/spddl-GUI/releases/download/spddl/spddlGUI.exe)
-#
-#### If you know Userscript [try this,](https://greasyfork.org/en/scripts/511659-spotify-downloader-yank) and [try this](https://github.com/afkarxyz/spddl) if you're familiar with CLI.
 
 ## Screenshots
-
-![image](https://github.com/user-attachments/assets/a810c2d2-807f-4a85-b067-e03a57310fd6)
-
-![image](https://github.com/user-attachments/assets/31b25b13-3b14-4ef5-a16d-9bc1b697e622)
-
-![image](https://github.com/user-attachments/assets/fbc1e71c-ea3c-41f5-94ae-e30a091bef0e)
 
 ## Features
 
 - Download individual tracks, entire albums, or playlists from Spotify
 - High-quality audio download at `320 kbps` for the best listening experience
 - No Spotify account required
-- Download history
 
-## Legal Notice
+## Usage
 
-This tool is for educational purposes only. Please respect copyright laws and Spotify's terms of service. Support artists by using official platforms to purchase their music.
-
-## Disclaimer
-
-This project is not affiliated with, maintained, authorized, endorsed, or sponsored by Spotify or any of its affiliates.
+> [!IMPORTANT]  
+> Due to updates in the API, a token is required periodically. Follow the steps below to obtain the token:  
+> 1. Visit [https://spotifydown.com/](https://spotifydown.com/) and open the **Network** tab in your browser's developer tools (press `F12`).  
+> 2. While the Network tab is open, press the download button.  
+> 3. Filter the requests to display only **`Fetch/XHR`**, then look for `{track, album, or playlist id}?token=` and click on it.  
+> 4. Open the **Payload** tab.  
+>    
+> ![image](https://github.com/user-attachments/assets/b414dbab-b0e8-4e86-afe0-6d0889597a88) 
+> 
+> 5. Copy the token value from the part that looks like this: ***`0.z4yZaBttYIIc...`***
