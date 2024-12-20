@@ -31,4 +31,4 @@
    
 ![image](https://github.com/user-attachments/assets/00448018-482f-4b19-b143-7b4ee8d9bca9)
 
-5. Copy the token value from the part that looks like this: `0.FPfLLqH4r-2fEehjOPHII57lSX5AVYsW...`
+5. Copy token value.
