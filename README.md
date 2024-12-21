@@ -33,6 +33,6 @@
 
 5. Copy token value.
 
-### Or you can use this userscript: [SpotifyDown Token Grabber](https://github.com/afkarxyz/SpotifyDown-GUI/raw/refs/heads/main/SpotifyDown.user.js)
+#### Or you can use this userscript [SpotifyDown Token Grabber](https://github.com/afkarxyz/SpotifyDown-GUI/raw/refs/heads/main/SpotifyDown.user.js)
 
 ![image](https://github.com/user-attachments/assets/3e5ba547-2515-44d1-9db2-0974bf059861)
