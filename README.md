@@ -20,7 +20,7 @@
 - No Spotify account required
 
 > [!IMPORTANT]  
-> Due to updates in the API, a token is required periodically. Follow the steps below to obtain the token.
+> Due to updates in the API, a token is required periodically. It seems that the token expiration period is around 10 minutes. Follow the steps below to obtain the token.
 
 ## Obtaining Tokens Manually
 
