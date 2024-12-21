@@ -14,7 +14,7 @@
 
 ## Features
 
-- Download individual tracks, entire albums, or playlists from Spotify
+- Download individual tracks, entire albums, or playlists
 - The ability to download more than `100 tracks`
 - High-quality audio download at `320 kbps`
 - No Spotify account required
