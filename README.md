@@ -31,7 +31,7 @@
    
 ![image](https://github.com/user-attachments/assets/00448018-482f-4b19-b143-7b4ee8d9bca9)
 
-5. Copy token value.
+5. Copy the token value.
 
 #### Or you can use this userscript [SpotifyDown Token Grabber](https://github.com/afkarxyz/SpotifyDown-GUI/raw/refs/heads/main/TokenGrabber.user.js)
 
