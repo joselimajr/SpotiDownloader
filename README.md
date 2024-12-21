@@ -41,4 +41,4 @@
 
 ![image](https://github.com/user-attachments/assets/a4116cd6-d273-4af0-b702-abac61ea4eec)
 
-### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v1.0/TokenGrabber.exe) Token Grabber
+#### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v1.0/TokenGrabber.exe) Token Grabber
