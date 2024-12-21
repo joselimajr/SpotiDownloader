@@ -50,6 +50,21 @@ class DownloadWorker(QThread):
         self.is_paused = False
         self.is_stopped = False
         self.failed_tracks = []
+        self.skipped_tracks = []
+        self.MAX_RETRIES = 3
+        self.TIMEOUT = 5
+
+    def calculate_progress(self, track_index, sub_progress):
+        total_tracks = len(self.tracks)
+        track_weight = 100.0 / total_tracks
+        base_progress = track_index * track_weight
+        current_track_progress = (sub_progress / 100.0) * track_weight
+        return int(base_progress + current_track_progress)
+
+    def get_track_filepath(self, track):
+        filename = f"{track.title} - {track.artists}.mp3"
+        filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+        return os.path.join(self.outpath, filename)
 
     def run(self):
         try:
@@ -57,29 +72,90 @@ class DownloadWorker(QThread):
             failed_tracks = 0
             
             for i, track in enumerate(self.tracks):
-                while self.is_paused:
-                    if self.is_stopped:
-                        return
-                    self.msleep(100)
                 if self.is_stopped:
                     return
 
-                self.progress.emit(f"Starting download ({i+1}/{total_tracks}): {track.title} - {track.artists}", 0)
-                
-                try:
-                    self.download_and_process_track(track, self.outpath)
-                    progress = int((i + 1) / total_tracks * 100)
-                    self.progress.emit(f"Downloaded successfully", progress)
-                except Exception as e:
-                    failed_tracks += 1
-                    self.failed_tracks.append((track.title, track.artists, str(e)))
-                    if "token expired" in str(e).lower() or failed_tracks == total_tracks:
-                        self.token_error.emit()
-                        return
+                filepath = self.get_track_filepath(track)
+                if os.path.exists(filepath):
+                    self.skipped_tracks.append((track.title, track.artists))
+                    self.progress.emit(
+                        f"Skipped existing file ({i+1}/{total_tracks}): {track.title} - {track.artists}", 
+                        self.calculate_progress(i+1, 0)
+                    )
                     continue
+
+                retry_count = 0
+                success = False
+
+                while retry_count < self.MAX_RETRIES and not success:
+                    try:
+                        while self.is_paused:
+                            if self.is_stopped:
+                                return
+                            self.msleep(100)
+
+                        self.progress.emit(
+                            f"Starting download ({i+1}/{total_tracks}): {track.title} - {track.artists}", 
+                            self.calculate_progress(i, 0)
+                        )
+                        self.msleep(500)
+                        
+                        self.progress.emit("Getting download link...", self.calculate_progress(i, 25))
+                        response = requests.get(
+                            f"https://api.spotifydown.com/download/{track.id}?token={self.token}", 
+                            headers=HEADERS,
+                            timeout=self.TIMEOUT
+                        )
+                        data = response.json()
+                        
+                        if not data.get('success'):
+                            raise Exception(data.get('error', 'Download failed'))
+
+                        self.progress.emit("Downloading audio...", self.calculate_progress(i, 50))
+                        
+                        audio_response = requests.get(data['link'], timeout=self.TIMEOUT)
+                        if audio_response.status_code != 200:
+                            raise Exception("Failed to download audio file")
+
+                        self.progress.emit("Saving file...", self.calculate_progress(i, 75))
+                        with open(filepath, 'wb') as f:
+                            f.write(audio_response.content)
+                        
+                        self.progress.emit(f"Adding metadata...", self.calculate_progress(i, 90))
+                        self.add_metadata(filepath, track)
+
+                        self.progress.emit(
+                            f"Successfully downloaded: {track.title}", 
+                            self.calculate_progress(i, 100)
+                        )
+                        success = True
+                        self.msleep(500)
+                        
+                    except Exception as e:
+                        retry_count += 1
+                        if "token expired" in str(e).lower():
+                            self.token_error.emit()
+                            return
+                        
+                        if retry_count < self.MAX_RETRIES:
+                            self.progress.emit(
+                                f"Error: {str(e)}. Retry attempt {retry_count} of {self.MAX_RETRIES}...", 
+                                self.calculate_progress(i, 0)
+                            )
+                            self.msleep(1000)
+                        else:
+                            failed_tracks += 1
+                            self.failed_tracks.append((track.title, track.artists, str(e)))
+                            if failed_tracks == total_tracks:
+                                self.token_error.emit()
+                                return
 
             if not self.is_stopped:
                 success_message = "Download completed!"
+                if self.skipped_tracks:
+                    success_message += f"\n\nSkipped {len(self.skipped_tracks)} existing files:"
+                    for title, artists in self.skipped_tracks:
+                        success_message += f"\n• {title} - {artists}"
                 if self.failed_tracks:
                     success_message += f"\n\nFailed downloads: {len(self.failed_tracks)} tracks"
                 self.finished.emit(True, success_message, self.failed_tracks)
@@ -87,33 +163,9 @@ class DownloadWorker(QThread):
         except Exception as e:
             self.finished.emit(False, str(e), self.failed_tracks)
 
-    def download_and_process_track(self, track, outpath):
-        response = requests.get(
-            f"https://api.spotifydown.com/download/{track.id}?token={self.token}", 
-            headers=HEADERS
-        )
-        data = response.json()
-        
-        if not data.get('success'):
-            raise Exception(data.get('error', 'Download failed'))
-
-        filename = f"{track.title} - {track.artists}.mp3"
-        filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
-        filepath = os.path.join(outpath, filename)
-
-        audio_response = requests.get(data['link'])
-        if audio_response.status_code == 200:
-            with open(filepath, 'wb') as f:
-                f.write(audio_response.content)
-            
-            self.progress.emit(f"Adding metadata: {track.title}", 50)
-            self.add_metadata(filepath, track)
-        else:
-            raise Exception("Failed to download audio file")
-
     def add_metadata(self, filepath: str, track: Track):
         try:
-            cover_response = requests.get(track.cover_url)
+            cover_response = requests.get(track.cover_url, timeout=self.TIMEOUT)
             if cover_response.status_code != 200:
                 return
             cover_data = cover_response.content
