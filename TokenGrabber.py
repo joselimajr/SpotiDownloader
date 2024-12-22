@@ -23,10 +23,19 @@ class GrabberThread(QThread):
         except Exception as e:
             self.error_occurred.emit(str(e))
 
+    async def wait_for_element(self, page, selector, timeout=30000):
+        try:
+            element = await page.wait_for(selector, timeout=timeout)
+            return element
+        except asyncio.TimeoutError:
+            raise Exception(f"Timeout waiting for element: {selector}")
+        except Exception as e:
+            raise Exception(f"Error finding element {selector}: {str(e)}")
+
     async def fetch_token(self):
         browser = await zd.start()
         try:
-            page = await browser.get("https://spotifydown.com/")
+            page = await browser.get("https://spotifydown.com/en")
             
             await page.evaluate("""
                 window.requests = [];
@@ -49,30 +58,33 @@ class GrabberThread(QThread):
             
             await asyncio.sleep(self.delay)
             
-            input_element = await page.query_selector(".searchInput")
+            input_element = await self.wait_for_element(page, ".searchInput")
             await input_element.send_keys("https://open.spotify.com/track/2plbrEY59IikOBgBGLjaoe")
             
-            await asyncio.sleep(1)
-            
-            submit_button = await page.query_selector("button.flex.justify-center.items-center.bg-button")
+            submit_button = await self.wait_for_element(page, "button.flex.justify-center.items-center.bg-button")
             await submit_button.click()
             
-            await asyncio.sleep(self.delay)
-            
-            download_button = await page.query_selector("div.flex.items-center.justify-end button.w-24.sm\:w-32.mt-2.p-2.cursor-pointer.bg-button.rounded-full.text-gray-100.hover\:bg-button-active")
+            download_selector = "div.flex.items-center.justify-end button.w-24.sm\\:w-32.mt-2.p-2.cursor-pointer.bg-button.rounded-full.text-gray-100.hover\\:bg-button-active"
+            download_button = await self.wait_for_element(page, download_selector)
             await download_button.click()
             
-            await asyncio.sleep(1)
+            await page.sleep(1)
             
             requests = await page.evaluate("window.requests")
             
+            token_found = False
             for req in requests:
                 if "api.spotifydown.com/download" in req['url']:
                     token_match = re.search(r'token=(.+)$', req['url'])
                     if token_match:
                         token = token_match.group(1)
                         self.token_ready.emit(token)
+                        token_found = True
                         break
+            
+            if not token_found:
+                raise Exception("No token found in requests")
+                
         finally:
             await browser.stop()
 
