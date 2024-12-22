@@ -37,6 +37,9 @@
 
 ![image](https://github.com/user-attachments/assets/f0a90511-973f-4917-8de9-5f34cf346f36)
 
+> [!NOTE]  
+> Requires **Tampermonkey.**
+
 ## Obtaining Tokens Automatically
 
 `Normal` mode has a 5-second delay, while `Slow` mode has a 10-second delay.
