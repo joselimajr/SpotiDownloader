@@ -24,7 +24,7 @@
 
 ## Obtaining Tokens Manually
 
-1. Visit [https://spotifydown.com/](https://spotifydown.com/) and open the **Network** tab in your browser's developer tools (press `F12`).  
+1. Visit [https://spotifydown.com](https://spotifydown.com/) and open the **Network** tab in your browser's developer tools (press `F12`).  
 2. While the Network tab is open, press the download button. Then, press the second download button.
 3. Filter the requests to display only **Fetch/XHR**, then look for `{track_id}?token=` and click on it.  
 4. Open the **Payload** tab.
