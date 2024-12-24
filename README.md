@@ -33,12 +33,12 @@
 
 5. Copy the token value.
 
-#### Or you can use this userscript [SpotifyDown Token Grabber](https://github.com/afkarxyz/SpotifyDown-GUI/raw/refs/heads/main/TokenGrabber.user.js)
+#### Or you can use this userscript [Token Grabber](https://github.com/afkarxyz/SpotifyDown-GUI/raw/refs/heads/main/TokenGrabber.user.js)
 
 ![image](https://github.com/user-attachments/assets/f0a90511-973f-4917-8de9-5f34cf346f36)
 
 > [!NOTE]  
-> Requires **Tampermonkey.**
+> Requires **Tampermonkey**
 
 ## Obtaining Tokens Automatically
 
@@ -47,6 +47,6 @@
 ![image](https://github.com/user-attachments/assets/a4116cd6-d273-4af0-b702-abac61ea4eec)
 
 > [!NOTE]  
-> Requires **Google Chrome.**
+> Requires **Google Chrome**
 
 #### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v1.0/TokenGrabber.exe) Token Grabber
