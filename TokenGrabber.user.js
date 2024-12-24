@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         SpotifyDown Token Grabber 
+// @name         Token Grabber 
 // @description  Get SpotifyDown token from network requests.
 // @icon         https://raw.githubusercontent.com/afkarxyz/SpotifyDown-GUI/refs/heads/main/SpotifyDown.svg
 // @version      1.0
