@@ -3,25 +3,54 @@ import os
 import asyncio
 import zendriver as zd
 import re
+import random
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                            QPushButton, QTextEdit, QMessageBox, QComboBox,
+                            QPushButton, QTextEdit, QComboBox,
                             QLabel, QHBoxLayout)
 from PyQt6.QtCore import QThread, pyqtSignal, QTimer
-from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon, QCursor
+
+SPOTIFY_URLS = [
+    "https://open.spotify.com/track/2plbrEY59IikOBgBGLjaoe",
+    "https://open.spotify.com/track/4wJ5Qq0jBN4ajy7ouZIV1c",
+    "https://open.spotify.com/track/6dOtVTDdiauQNBQEDOtlAB",
+    "https://open.spotify.com/track/7uoFMmxln0GPXQ0AcCBXRq",
+    "https://open.spotify.com/track/2HRqTpkrJO5ggZyyK6NPWz"
+]
 
 class GrabberThread(QThread):
     token_ready = pyqtSignal(str)
     error_occurred = pyqtSignal(str)
+    status_update = pyqtSignal(str)
     
     def __init__(self, delay):
         super().__init__()
         self.delay = delay
+        self.max_retries = 3
 
     def run(self):
-        try:
-            asyncio.run(self.fetch_token())
-        except Exception as e:
-            self.error_occurred.emit(str(e))
+        tried_urls = set()
+        for attempt in range(self.max_retries + 1):
+            try:
+                available_urls = [url for url in SPOTIFY_URLS if url not in tried_urls]
+                if not available_urls:
+                    raise Exception("All URLs have been tried")
+                
+                selected_url = random.choice(available_urls)
+                tried_urls.add(selected_url)
+                
+                if attempt == 0:
+                    self.status_update.emit("Fetching Token...")
+                else:
+                    self.status_update.emit(f"Retrying... ({attempt}/{self.max_retries})")
+                
+                asyncio.run(self.fetch_token(selected_url))
+                return
+            except Exception as e:
+                if attempt < self.max_retries:
+                    continue
+                self.error_occurred.emit(f"All attempts failed. Last error: {str(e)}")
 
     async def wait_for_element(self, page, selector, timeout=30000):
         try:
@@ -32,7 +61,18 @@ class GrabberThread(QThread):
         except Exception as e:
             raise Exception(f"Error finding element {selector}: {str(e)}")
 
-    async def fetch_token(self):
+    async def wait_for_token(self, page, max_attempts=10, check_interval=0.5):
+        for _ in range(max_attempts):
+            requests = await page.evaluate("window.requests")
+            for req in requests:
+                if "api.spotifydown.com/download" in req['url']:
+                    token_match = re.search(r'token=(.+)$', req['url'])
+                    if token_match:
+                        return token_match.group(1)
+            await asyncio.sleep(check_interval)
+        raise Exception("Token not found within timeout period")
+
+    async def fetch_token(self, url):
         browser = await zd.start()
         try:
             page = await browser.get("https://spotifydown.com/en")
@@ -59,7 +99,7 @@ class GrabberThread(QThread):
             await asyncio.sleep(self.delay)
             
             input_element = await self.wait_for_element(page, ".searchInput")
-            await input_element.send_keys("https://open.spotify.com/track/2plbrEY59IikOBgBGLjaoe")
+            await input_element.send_keys(url)
             
             submit_button = await self.wait_for_element(page, "button.flex.justify-center.items-center.bg-button")
             await submit_button.click()
@@ -68,21 +108,10 @@ class GrabberThread(QThread):
             download_button = await self.wait_for_element(page, download_selector)
             await download_button.click()
             
-            await page.sleep(1)
-            
-            requests = await page.evaluate("window.requests")
-            
-            token_found = False
-            for req in requests:
-                if "api.spotifydown.com/download" in req['url']:
-                    token_match = re.search(r'token=(.+)$', req['url'])
-                    if token_match:
-                        token = token_match.group(1)
-                        self.token_ready.emit(token)
-                        token_found = True
-                        break
-            
-            if not token_found:
+            token = await self.wait_for_token(page)
+            if token:
+                self.token_ready.emit(token)
+            else:
                 raise Exception("No token found in requests")
                 
         finally:
@@ -92,7 +121,7 @@ class Grabber(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Token Grabber")
-        self.setFixedSize(400, 200)
+        self.setFixedSize(400, 180)
 
         icon_path = os.path.join(os.path.dirname(__file__), "token.svg")
         if os.path.exists(icon_path):
@@ -102,16 +131,17 @@ class Grabber(QMainWindow):
         self.setCentralWidget(central_widget)
         layout = QVBoxLayout(central_widget)
 
-        mode_layout = QHBoxLayout()
-        mode_label = QLabel("Mode:")
-        self.mode_combo = QComboBox()
-        self.mode_combo.addItems(["Normal", "Slow"])
-        self.mode_combo.setFixedWidth(100)
-        mode_layout.addWidget(mode_label)
-        mode_layout.addWidget(self.mode_combo)
-        mode_layout.addStretch()
+        speed_layout = QHBoxLayout()
+        speed_label = QLabel("Speed:")
+        self.speed_combo = QComboBox()
+        self.speed_combo.addItems(["Normal", "Slow"])
+        self.speed_combo.setFixedWidth(100)
+        speed_layout.addWidget(speed_label)
+        speed_layout.addWidget(self.speed_combo)
+        speed_layout.addStretch()
 
         self.action_button = QPushButton("Get Token")
+        self.action_button.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.action_button.setFixedWidth(100)
         
         button_layout = QHBoxLayout()
@@ -122,7 +152,7 @@ class Grabber(QMainWindow):
         self.token_display = QTextEdit()
         self.token_display.setReadOnly(True)
 
-        layout.addLayout(mode_layout)
+        layout.addLayout(speed_layout)
         layout.addWidget(self.token_display)
         layout.addLayout(button_layout)
 
@@ -136,8 +166,8 @@ class Grabber(QMainWindow):
         self.button_timer.timeout.connect(self.reset_button_text)
 
     def get_selected_delay(self):
-        mode = self.mode_combo.currentText()
-        return 10 if mode == "Slow" else 5
+        speed = self.speed_combo.currentText()
+        return 10 if speed == "Slow" else 5
 
     def handle_button_click(self):
         if self.current_token is None:
@@ -148,12 +178,13 @@ class Grabber(QMainWindow):
     def start_token_fetch(self):
         self.action_button.setEnabled(False)
         self.token_display.clear()
-        self.token_display.setPlaceholderText("Fetching token... Please wait...")
+        self.token_display.setPlaceholderText("Initializing...")
         
         delay = self.get_selected_delay()
         self.thread = GrabberThread(delay)
         self.thread.token_ready.connect(self.on_token_ready)
         self.thread.error_occurred.connect(self.on_error)
+        self.thread.status_update.connect(self.on_status_update)
         self.thread.finished.connect(self.on_thread_complete)
         self.thread.start()
 
@@ -164,11 +195,15 @@ class Grabber(QMainWindow):
         self.action_button.setText("Copy Token")
 
     def on_error(self, error_message):
-        QMessageBox.critical(self, "Error", f"An error occurred: {error_message}")
         self.token_display.setPlaceholderText("")
+        self.token_display.setText(f"Error: {error_message}")
         self.action_button.setEnabled(True)
         self.current_token = None
         self.action_button.setText("Get Token")
+
+    def on_status_update(self, message):
+        self.token_display.setPlaceholderText("")
+        self.token_display.setText(message)
 
     def on_thread_complete(self):
         self.action_button.setEnabled(True)
@@ -178,12 +213,14 @@ class Grabber(QMainWindow):
             clipboard = QApplication.clipboard()
             clipboard.setText(self.current_token)
             self.action_button.setText("Token Copied!")
-            
             self.current_token = None
-            self.button_timer.start(500)
+            self.token_display.clear()
+            self.token_display.setPlaceholderText("Token Copied!")
+            self.button_timer.start(1000)
     
     def reset_button_text(self):
         self.action_button.setText("Get Token")
+        self.token_display.setPlaceholderText("")
 
 def main():
     app = QApplication(sys.argv)
