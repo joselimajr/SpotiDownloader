@@ -27,30 +27,14 @@ class GrabberThread(QThread):
     def __init__(self, delay):
         super().__init__()
         self.delay = delay
-        self.max_retries = 3
 
     def run(self):
-        tried_urls = set()
-        for attempt in range(self.max_retries + 1):
-            try:
-                available_urls = [url for url in SPOTIFY_URLS if url not in tried_urls]
-                if not available_urls:
-                    raise Exception("All URLs have been tried")
-                
-                selected_url = random.choice(available_urls)
-                tried_urls.add(selected_url)
-                
-                if attempt == 0:
-                    self.status_update.emit("Fetching Token...")
-                else:
-                    self.status_update.emit(f"Retrying... ({attempt}/{self.max_retries})")
-                
-                asyncio.run(self.fetch_token(selected_url))
-                return
-            except Exception as e:
-                if attempt < self.max_retries:
-                    continue
-                self.error_occurred.emit(f"All attempts failed. Last error: {str(e)}")
+        try:
+            selected_url = random.choice(SPOTIFY_URLS)
+            self.status_update.emit("Fetching Token...")
+            asyncio.run(self.fetch_token(selected_url))
+        except Exception as e:
+            self.error_occurred.emit(str(e))
 
     async def wait_for_element(self, page, selector, timeout=30000):
         try:
@@ -160,6 +144,7 @@ class Grabber(QMainWindow):
 
         self.thread = None
         self.current_token = None
+        self.is_error_state = False
         
         self.button_timer = QTimer()
         self.button_timer.setSingleShot(True)
@@ -170,7 +155,11 @@ class Grabber(QMainWindow):
         return 10 if speed == "Slow" else 5
 
     def handle_button_click(self):
-        if self.current_token is None:
+        if self.is_error_state:
+            self.is_error_state = False
+            self.action_button.setText("Get Token")
+            self.start_token_fetch()
+        elif self.current_token is None:
             self.start_token_fetch()
         else:
             self.copy_token()
@@ -193,13 +182,15 @@ class Grabber(QMainWindow):
         self.token_display.setPlaceholderText("")
         self.token_display.setText(token)
         self.action_button.setText("Copy Token")
+        self.is_error_state = False
 
     def on_error(self, error_message):
         self.token_display.setPlaceholderText("")
         self.token_display.setText(f"Error: {error_message}")
         self.action_button.setEnabled(True)
         self.current_token = None
-        self.action_button.setText("Get Token")
+        self.action_button.setText("Retry")
+        self.is_error_state = True
 
     def on_status_update(self, message):
         self.token_display.setPlaceholderText("")
