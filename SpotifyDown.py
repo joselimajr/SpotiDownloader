@@ -8,7 +8,7 @@ import re
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
-    QLabel, QFileDialog, QListWidget, QListWidgetItem, QMessageBox, QTextEdit, QTabWidget,
+    QLabel, QFileDialog, QListWidget, QMessageBox, QTextEdit, QTabWidget,
     QAbstractItemView, QSpacerItem, QSizePolicy, QProgressBar, QHBoxLayout
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize, QTimer, QTime
@@ -508,21 +508,14 @@ class SpotifyDownGUI(QWidget):
         search_text = self.search_input.text().lower()
         
         if not hasattr(self, 'original_items'):
-            self.original_items = [(i, self.track_list.item(i).text()) 
+            self.original_items = [self.track_list.item(i).text() 
                                 for i in range(self.track_list.count())]
         
         self.track_list.clear()
-        if not search_text:
-            for original_index, item_text in self.original_items:
-                item = QListWidgetItem(item_text)
-                item.setData(Qt.ItemDataRole.UserRole, original_index)
-                self.track_list.addItem(item)
-        else:
-            for original_index, item_text in self.original_items:
-                if search_text in item_text.lower():
-                    item = QListWidgetItem(item_text)
-                    item.setData(Qt.ItemDataRole.UserRole, original_index)
-                    self.track_list.addItem(item)
+        
+        for item_text in self.original_items:
+            if search_text in item_text.lower():
+                self.track_list.addItem(item_text)
 
     def setup_info_widget(self):
         self.info_widget = QWidget()
@@ -727,7 +720,7 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v1.2 | December 2024")
+        footer_label = QLabel("v1.3 | December 2024")
         footer_label.setStyleSheet("font-size: 11px; color: #888;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -973,7 +966,14 @@ class SpotifyDownGUI(QWidget):
             if not selected_items:
                 QMessageBox.warning(self, 'Warning', 'Please select tracks to download.')
                 return
-            original_indices = [item.data(Qt.ItemDataRole.UserRole) for item in selected_items]
+                
+            selected_texts = [item.text() for item in selected_items]
+            
+            original_indices = []
+            for selected_text in selected_texts:
+                track_num = int(selected_text.split('.')[0])
+                original_indices.append(track_num - 1)
+                
             self.download_tracks(original_indices)
 
     def download_all(self):
