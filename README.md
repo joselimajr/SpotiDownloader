@@ -2,20 +2,21 @@
 
 **SpotifyDown GUI** is a graphical user interface for downloading Spotify tracks, albums, and playlists directly from Spotify using an API created by spotifydown.com
 
-### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v1.0/SpotifyDown.exe) SpotifyDown GUI
+### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v1.1/SpotifyDown.exe) SpotifyDown GUI
 
 ## Screenshots
 
-![image](https://github.com/user-attachments/assets/f1fb5a71-6e81-48de-9c1c-718fb936a023)
+![image](https://github.com/user-attachments/assets/74bea158-4b62-403b-bd37-38e9085ae471)
 
-![image](https://github.com/user-attachments/assets/ac85475b-746a-4eae-93fc-ec3b5606191e)
+![image](https://github.com/user-attachments/assets/325da8cb-a2f2-4b20-a467-a69537de45e2)
 
-![image](https://github.com/user-attachments/assets/7ddf6be4-b24a-45cc-ae74-ee6a5d5adbd4)
+![image](https://github.com/user-attachments/assets/8e4d25a8-be9f-4b3a-b300-1fcf98d353eb)
 
 ## Features
 
 - Download individual tracks, entire albums, or playlists
-- The ability to download more than `100 tracks`
+- The ability to download more than `100 tracks` from a playlist  
+- The ability to download more than `50 tracks` from an album
 - High-quality audio download at `320 kbps`
 - No Spotify account required
 
@@ -42,11 +43,11 @@
 
 ## Obtaining Tokens Automatically
 
-`Normal` mode has a 5-second delay, while `Slow` mode has a 10-second delay.
+`Normal` speed has a 5-second delay, while `Slow` speed has a 10-second delay.
 
-![image](https://github.com/user-attachments/assets/a4116cd6-d273-4af0-b702-abac61ea4eec)
+![image](https://github.com/user-attachments/assets/ec72ef14-e25d-4cfd-ab70-852fac00fa41)
 
 > [!NOTE]  
 > Requires **Google Chrome**
 
-#### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v1.0/TokenGrabber.exe) Token Grabber
+#### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v1.1/TokenGrabber.exe) Token Grabber
