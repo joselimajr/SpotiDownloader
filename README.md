@@ -43,7 +43,7 @@
 
 ## Obtaining Tokens Automatically
 
-`Normal` speed has a 5-second delay, while `Slow` speed has a 10-second delay.
+`Normal` speed has a 5-second delay, while `Slow` speed has a 10-second delay, both for Cloudflare verification.
 
 ![image](https://github.com/user-attachments/assets/ec72ef14-e25d-4cfd-ab70-852fac00fa41)
 
