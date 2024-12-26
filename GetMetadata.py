@@ -54,6 +54,7 @@ def extract_track_metadata(song: Song, track_id: str) -> Dict[str, Any]:
             'cover': fab_data['image'],
             'title': clean_unicode_text(fab_data['name']),
             'artist': fab_data['artists'],
+            'album': clean_unicode_text(track_data['albumOfTrack']['name']),
             'duration': duration,
             'release': track_data['albumOfTrack']['date']['isoString'].split('T')[0]
         }
