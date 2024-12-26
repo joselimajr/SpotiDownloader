@@ -38,9 +38,8 @@
 ![image](https://github.com/user-attachments/assets/7c79c2da-9c64-4000-ad85-b8e8eb68fe69)
 
 > [!NOTE]
-> Wait until Cloudflare verification is successful, then press **Get Token**
-> 
-> Requires **Tampermonkey**
+> - Wait until Cloudflare verification is successful, then press **Get Token**
+> - Requires **Tampermonkey**
 
 #### Install [Token Grabber Script](https://github.com/afkarxyz/SpotifyDown-GUI/raw/refs/heads/main/TokenGrabber.user.js)
 
