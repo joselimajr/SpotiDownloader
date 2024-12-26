@@ -8,14 +8,6 @@
 > - Due to updates in the API, a token is required periodically. It seems that the token expiration period is around 10 minutes.
 > - Requires **Google Chrome**
 
-## Screenshots
-
-![image](https://github.com/user-attachments/assets/ee4cfa39-5cad-42a3-aabf-566e33ec840c)
-
-![image](https://github.com/user-attachments/assets/4a6b5572-af20-44fc-b2fd-c13ab0efd158)
-
-![image](https://github.com/user-attachments/assets/aaf9cbf5-3740-4a09-a0bd-53623f4e839c)
-
 ## Features
 
 - Download individual tracks, entire albums, or playlists
@@ -24,3 +16,11 @@
 - High-quality audio download at `320 kbps`
 - Automatically obtaining the token
 - No Spotify account required
+  
+## Screenshots
+
+![image](https://github.com/user-attachments/assets/ee4cfa39-5cad-42a3-aabf-566e33ec840c)
+
+![image](https://github.com/user-attachments/assets/4a6b5572-af20-44fc-b2fd-c13ab0efd158)
+
+![image](https://github.com/user-attachments/assets/aaf9cbf5-3740-4a09-a0bd-53623f4e839c)
