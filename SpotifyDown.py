@@ -5,11 +5,13 @@ from datetime import datetime
 import json
 import requests
 import re
+import asyncio
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
     QLabel, QFileDialog, QListWidget, QMessageBox, QTextEdit, QTabWidget,
-    QAbstractItemView, QSpacerItem, QSizePolicy, QProgressBar, QHBoxLayout
+    QAbstractItemView, QSpacerItem, QSizePolicy, QProgressBar, QHBoxLayout,
+    QButtonGroup, QRadioButton, QCheckBox
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize, QTimer, QTime
 from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap
@@ -19,6 +21,7 @@ from mutagen.mp3 import MP3
 from mutagen.id3 import APIC, TIT2, TPE1, TALB, TRCK, error
 
 from GetMetadata import get_track_metadata, get_album_metadata, get_playlist_metadata, extract_spotify_id
+from GetToken import main as get_token
 
 HEADERS = {
     'Host': 'api.spotifydown.com',
@@ -28,13 +31,7 @@ HEADERS = {
 
 def format_artists(artists_string):
     artists = [a.strip() for a in re.split(r'[,&]', artists_string) if a.strip()]
-    
-    if len(artists) > 2:
-        return ", ".join(artists)
-    elif len(artists) == 2:
-        return f"{artists[0]} & {artists[1]}"
-    else:
-        return artists_string
+    return ", ".join(artists)
 
 @dataclass
 class Track:
@@ -51,6 +48,13 @@ def handle_error_response(response):
         return response
         
     if response.status_code == 400:
+        try:
+            error_data = response.json()
+            error_msg = error_data.get('error', '').lower()
+            if 'header' in error_msg:
+                return "Error: Invalid request. Please try downloading directly from spotifydown.com or try again later"
+        except:
+            pass
         return "Error: Invalid request. Please try again"
     elif response.status_code == 403:
         return "Error: Token has expired. Please update your token"
@@ -66,7 +70,9 @@ def handle_error_response(response):
         if not data.get('success'):
             error_msg = data.get('error', 'Unknown error').lower()
             
-            if 'timeout' in error_msg or 'timed out' in error_msg:
+            if 'header' in error_msg:
+                return "Error: Invalid request. Please try downloading directly from spotifydown.com or try again later"
+            elif 'timeout' in error_msg or 'timed out' in error_msg:
                 return "Error: Connection timed out. Please try again"
             elif 'token' in error_msg:
                 return "Error: Token has expired. Please update your token"
@@ -85,12 +91,22 @@ def handle_error_response(response):
             return "Error: Connection failed. Please check your internet"
         return f"Error: {str(e)}"
 
+def sanitize_filename(name: str) -> str:
+    name = re.sub(r'[<>:"/\\|?*]', '_', name)
+    
+    name = name.replace('...', '')
+    
+    name = re.sub(r'\s+', ' ', name)
+    name = name.strip(' .')
+    
+    return name
+
 class DownloadWorker(QThread):
     finished = pyqtSignal(bool, str, list)
     progress = pyqtSignal(str, int)
     token_error = pyqtSignal()
     
-    def __init__(self, tracks, outpath, token, is_single_track=False, is_album=False, is_playlist=False, album_or_playlist_name=''):
+    def __init__(self, tracks, outpath, token, is_single_track=False, is_album=False, is_playlist=False, album_or_playlist_name='', artist_title_radio=False, album_folder_check=False):
         super().__init__()
         self.tracks = tracks
         self.outpath = outpath
@@ -99,6 +115,8 @@ class DownloadWorker(QThread):
         self.is_album = is_album
         self.is_playlist = is_playlist
         self.album_or_playlist_name = album_or_playlist_name
+        self.artist_title_radio = artist_title_radio
+        self.album_folder_check = album_folder_check
         self.is_paused = False
         self.is_stopped = False
         self.failed_tracks = []
@@ -121,8 +139,18 @@ class DownloadWorker(QThread):
         return new_progress
 
     def get_track_filepath(self, track):
-        filename = f"{track.title} - {track.artists}.mp3"
-        filename = re.sub(r'[<>:"/\\|?*]', '_', filename)
+        if self.artist_title_radio:
+            filename = f"{track.artists} - {track.title}.mp3"
+        else:
+            filename = f"{track.title} - {track.artists}.mp3"
+        filename = sanitize_filename(filename)
+        
+        if self.album_folder_check and track.album:
+            album_folder = sanitize_filename(track.album)
+            album_path = os.path.join(self.outpath, album_folder)
+            os.makedirs(album_path, exist_ok=True)
+            return os.path.join(album_path, filename)
+        
         return os.path.join(self.outpath, filename)
 
     def simplify_error_message(self, error):
@@ -131,8 +159,8 @@ class DownloadWorker(QThread):
         if 'timeout' in error_str or 'timed out' in error_str:
             return "Connection timed out"
             
-        if 'missing required request header' in error_str:
-            return "Invalid request headers"
+        if 'missing required request header' in error_str or 'header' in error_str:
+            return "Invalid request. Please try downloading directly from spotifydown.com or try again later"
             
         if 'status code: 400' in error_str:
             return "Invalid request"
@@ -150,6 +178,13 @@ class DownloadWorker(QThread):
 
     def handle_download_error(self, error, track):
         simplified_error = self.simplify_error_message(error)
+        
+        all_invalid_headers = (len(self.failed_tracks) > 0 and 
+            all('header' in err[2].lower() or 'invalid request' in err[2].lower() 
+                for err in self.failed_tracks))
+        
+        if ('header' in simplified_error.lower() or 'invalid request' in simplified_error.lower()) and all_invalid_headers:
+            return "Invalid request. Please try downloading directly from spotifydown.com or try again later"
         
         report_error = simplified_error
         
@@ -382,6 +417,8 @@ class SpotifyDownGUI(QWidget):
     def load_config(self):
         self.last_token = ""
         self.last_output_path = os.path.expanduser("~\\Music")
+        self.filename_format = "title_artist"
+        self.use_album_folder = False
         
         cache_path = os.path.join(self.get_base_path(), ".spotifydown")
         if os.path.exists(cache_path):
@@ -390,6 +427,8 @@ class SpotifyDownGUI(QWidget):
                     data = json.load(f)
                     self.last_token = data.get("token", self.last_token)
                     self.last_output_path = data.get("output_path", self.last_output_path)
+                    self.filename_format = data.get("filename_format", "title_artist")
+                    self.use_album_folder = data.get("use_album_folder", False)
             except:
                 pass
 
@@ -398,17 +437,23 @@ class SpotifyDownGUI(QWidget):
             cache_path = os.path.join(self.get_base_path(), ".spotifydown")
             data = {
                 "token": self.token_input.text().strip(),
-                "output_path": self.output_dir.text().strip()
+                "output_path": self.output_dir.text().strip(),
+                "filename_format": "artist_title" if self.artist_title_radio.isChecked() else "title_artist",
+                "use_album_folder": self.album_folder_check.isChecked()
             }
             with open(cache_path, "w") as f:
                 json.dump(data, f)
         except Exception:
             pass
 
+    def save_format_settings(self):
+        self.save_config()
+        QMessageBox.information(self, "Success", "Format settings saved successfully!")
+
     def initUI(self):
         self.setWindowTitle('SpotifyDown GUI')
         self.setFixedWidth(650)
-        self.setMinimumHeight(450)
+        self.setMinimumHeight(500)
         
         icon_path = os.path.join(os.path.dirname(__file__), "icon.svg")
         if os.path.exists(icon_path):
@@ -457,21 +502,36 @@ class SpotifyDownGUI(QWidget):
         self.token_input.setPlaceholderText("Please enter the Token value")
         self.token_input.setClearButtonEnabled(True)
         
-        self.token_paste_btn = QPushButton()
-        self.token_save_btn = QPushButton('Save')
+        self.token_save_icon_btn = QPushButton()
+        self.token_save_btn = QPushButton('Get Token')
         
-        self.setup_button(self.token_paste_btn, "paste.svg", "Paste token from clipboard", self.paste_token)
+        self.setup_button(self.token_save_icon_btn, "save.svg", "Save token", self.save_token)
         
-        self.token_paste_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.token_save_icon_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.token_save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         
-        self.token_save_btn.clicked.connect(self.save_token)
+        self.token_save_btn.clicked.connect(self.get_token)
         
         token_layout.addWidget(token_label)
         token_layout.addWidget(self.token_input)
-        token_layout.addWidget(self.token_paste_btn)
+        token_layout.addWidget(self.token_save_icon_btn)
         token_layout.addWidget(self.token_save_btn)
         self.main_layout.addLayout(token_layout)
+
+    async def _fetch_token(self):
+        try:
+            token = await get_token()
+            if token:
+                self.token_input.setText(token)
+                self.save_config()
+                QMessageBox.information(self, "Success", "Token fetched and saved successfully!")
+            else:
+                QMessageBox.warning(self, "Error", "Failed to fetch token")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to fetch token: {str(e)}")
+
+    def get_token(self):
+        asyncio.run(self._fetch_token())
 
     def setup_output_section(self):
         output_layout = QHBoxLayout()
@@ -479,6 +539,7 @@ class SpotifyDownGUI(QWidget):
         output_label.setFixedWidth(100)
         self.output_dir = QLineEdit()
         self.output_dir.setText(self.last_output_path)
+        self.output_dir.textChanged.connect(self.save_config)
         
         self.open_dir_btn = QPushButton()
         self.output_browse = QPushButton('Browse')
@@ -495,6 +556,46 @@ class SpotifyDownGUI(QWidget):
         output_layout.addWidget(self.open_dir_btn)
         output_layout.addWidget(self.output_browse)
         self.main_layout.addLayout(output_layout)
+
+        format_layout = QHBoxLayout()
+        format_layout.setSpacing(10)
+        format_label = QLabel('Filename Format:')
+        format_label.setFixedWidth(100)
+        
+        format_options_layout = QHBoxLayout()
+        format_options_layout.setSpacing(5)
+        
+        self.format_group = QButtonGroup(self)
+        self.title_artist_radio = QRadioButton('Title - Artist')
+        self.title_artist_radio.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.title_artist_radio.toggled.connect(self.save_config)
+        
+        self.artist_title_radio = QRadioButton('Artist - Title')
+        self.artist_title_radio.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.artist_title_radio.toggled.connect(self.save_config)
+        
+        if self.filename_format == "artist_title":
+            self.artist_title_radio.setChecked(True)
+        else:
+            self.title_artist_radio.setChecked(True)
+                
+        self.format_group.addButton(self.title_artist_radio)
+        self.format_group.addButton(self.artist_title_radio)
+        
+        self.album_folder_check = QCheckBox('Album Folder (Playlist)')
+        self.album_folder_check.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.album_folder_check.setChecked(self.use_album_folder)
+        self.album_folder_check.toggled.connect(self.save_config)
+        
+        format_layout.addWidget(format_label)
+        format_layout.addWidget(self.title_artist_radio)
+        format_layout.addSpacing(5)
+        format_layout.addWidget(self.artist_title_radio)
+        format_layout.addSpacing(15)
+        format_layout.addWidget(self.album_folder_check)
+        format_layout.addStretch(1)
+        
+        self.main_layout.addLayout(format_layout)
 
     def setup_tabs(self):
         self.tab_widget = QTabWidget()
@@ -682,9 +783,9 @@ class SpotifyDownGUI(QWidget):
         about_layout.addWidget(title_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         sections = [
-            ("SpotifyDown", "http://spotifydown.com/"),
+            ("Official Site", "http://spotifydown.com/"),
             ("Issues", "https://github.com/afkarxyz/SpotifyDown-GUI/issues"),
-            ("About", "https://github.com/afkarxyz/SpotifyDown-GUI")
+            ("Update", "https://github.com/afkarxyz/SpotifyDown-GUI/releases")
         ]
 
         for title, url in sections:
@@ -720,7 +821,7 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v1.3 | December 2024")
+        footer_label = QLabel("v1.4 | December 2024")
         footer_label.setStyleSheet("font-size: 11px; color: #888;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -748,7 +849,6 @@ class SpotifyDownGUI(QWidget):
         directory = QFileDialog.getExistingDirectory(self, "Select Output Directory")
         if directory:
             self.output_dir.setText(directory)
-            self.save_config()
 
     def save_token(self):
         self.save_config()
@@ -799,11 +899,13 @@ class SpotifyDownGUI(QWidget):
         try:
             metadata = get_track_metadata(track_id)
             
+            formatted_artists = format_artists(metadata['artist'])
+            
             self.tracks = [Track(
                 id=track_id,
                 title=metadata['title'],
-                artists=metadata['artist'],
-                album=metadata.get('album', 'Unknown Album'),
+                artists=formatted_artists,
+                album=metadata['album'],
                 cover_url=metadata['cover'],
                 track_number=1,
                 duration=metadata.get('duration', '0:00')
@@ -811,6 +913,9 @@ class SpotifyDownGUI(QWidget):
             self.is_single_track = True
             self.is_album = self.is_playlist = False
             self.album_or_playlist_name = f"{self.tracks[0].title} - {self.tracks[0].artists}"
+            
+            metadata['artist'] = formatted_artists
+            
             self.update_display_after_fetch(metadata)
         except Exception as e:
             raise Exception(f"Failed to fetch track metadata: {str(e)}")
@@ -836,12 +941,14 @@ class SpotifyDownGUI(QWidget):
 
             self.tracks = []
             for i, track in enumerate(tracks_data, 1):
-                album_name = track.get('album', 'Unknown Album') if self.is_playlist else self.album_or_playlist_name
+                album_name = track['album'] if self.is_playlist else self.album_or_playlist_name
+                
+                formatted_artists = format_artists(track['artist'])
                 
                 self.tracks.append(Track(
                     id=track['id'],
                     title=track['title'],
-                    artists=track['artist'],
+                    artists=formatted_artists,
                     album=album_name,
                     cover_url=track.get('cover', metadata['album_info']['cover'] if self.is_album else metadata['playlist_info']['cover']),
                     track_number=i,
@@ -849,6 +956,10 @@ class SpotifyDownGUI(QWidget):
                 ))
 
             self.is_single_track = False
+            
+            if self.is_album and 'artist' in metadata['album_info']:
+                metadata['album_info']['artist'] = format_artists(metadata['album_info']['artist'])
+                
             self.update_display_after_fetch(metadata['album_info'] if self.is_album else metadata['playlist_info'])
         
         except Exception as e:
@@ -862,8 +973,7 @@ class SpotifyDownGUI(QWidget):
             self.track_list.clear()
             self.search_input.show()
             for i, track in enumerate(self.tracks, 1):
-                formatted_artists = format_artists(track.artists)
-                self.track_list.addItem(f"{i}. {track.title} - {formatted_artists} - {track.duration}")
+                self.track_list.addItem(f"{i}. {track.title} - {track.artists} - {track.duration}")
         else:
             self.search_input.hide()
             self.btn_layout.setContentsMargins(0, 0, 0, 0)
@@ -882,10 +992,9 @@ class SpotifyDownGUI(QWidget):
             self.artists_label.setText(f"<b>Owner</b> {owner}")
         else:
             artists = format_artists(metadata.get('artist', 'Unknown'))
-            if ',' in artists:
-                self.artists_label.setText(f"<b>Artists</b> {artists}")
-            else:
-                self.artists_label.setText(f"<b>Artist</b> {artists}")
+            artist_count = len(re.split(r'[,&]', metadata.get('artist', '')))
+            label = "Artists" if artist_count > 1 else "Artist"
+            self.artists_label.setText(f"<b>{label}</b> {artists}")
         
         if metadata.get('release'):
             release_date = datetime.strptime(metadata['release'], "%Y-%m-%d")
@@ -996,7 +1105,7 @@ class SpotifyDownGUI(QWidget):
         tracks_to_download = self.tracks if self.is_single_track else [self.tracks[i] for i in indices]
 
         if self.is_album or self.is_playlist:
-            folder_name = re.sub(r'[<>:"/\\|?*]', '_', self.album_or_playlist_name)
+            folder_name = sanitize_filename(self.album_or_playlist_name)
             outpath = os.path.join(outpath, folder_name)
             os.makedirs(outpath, exist_ok=True)
 
@@ -1004,7 +1113,7 @@ class SpotifyDownGUI(QWidget):
             self.start_download_worker(tracks_to_download, outpath)
         except Exception as e:
             QMessageBox.critical(self, "Error", f"An error occurred while starting the download: {str(e)}")
-
+            
     def start_download_worker(self, tracks_to_download, outpath):
         self.worker = DownloadWorker(
             tracks_to_download, 
@@ -1013,7 +1122,9 @@ class SpotifyDownGUI(QWidget):
             self.is_single_track, 
             self.is_album, 
             self.is_playlist, 
-            self.album_or_playlist_name
+            self.album_or_playlist_name,
+            self.artist_title_radio.isChecked(),
+            self.album_folder_check.isChecked()
         )
         self.worker.finished.connect(self.on_download_finished)
         self.worker.progress.connect(self.update_progress)
