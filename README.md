@@ -18,11 +18,11 @@
   
 ## Screenshots
 
-![image](https://github.com/user-attachments/assets/ee4cfa39-5cad-42a3-aabf-566e33ec840c)
+![image](https://github.com/user-attachments/assets/07b1fd3f-39fd-4b61-8bc8-883b620040c2)
 
-![image](https://github.com/user-attachments/assets/4a6b5572-af20-44fc-b2fd-c13ab0efd158)
+![image](https://github.com/user-attachments/assets/6b8f5be6-210c-43b9-8420-daedf9b671e8)
 
-![image](https://github.com/user-attachments/assets/aaf9cbf5-3740-4a09-a0bd-53623f4e839c)
+![image](https://github.com/user-attachments/assets/e8881b50-085f-412a-a870-594484e45465)
 
 > [!NOTE]
 > Requires **Google Chrome**
