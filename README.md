@@ -5,8 +5,7 @@
 ### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v1.4/SpotifyDown.exe) SpotifyDown GUI
 
 > [!IMPORTANT]  
-> - Due to updates in the API, a token is required periodically. It seems that the token expiration period is around 10 minutes.
-> - Requires **Google Chrome**
+> Due to updates in the API, a token is required periodically. It seems that the token expiration period is around 10 minutes.
 
 ## Features
 
@@ -24,3 +23,6 @@
 ![image](https://github.com/user-attachments/assets/4a6b5572-af20-44fc-b2fd-c13ab0efd158)
 
 ![image](https://github.com/user-attachments/assets/aaf9cbf5-3740-4a09-a0bd-53623f4e839c)
+
+> [!NOTE]
+> Requires **Google Chrome**
