@@ -92,14 +92,14 @@ def handle_error_response(response):
         return f"Error: {str(e)}"
 
 def sanitize_filename(name: str) -> str:
-    name = re.sub(r'[<>:"/\\|?*]', '_', name)
+    name = ''.join(char for char in name if ord(char) < 128 and char.isprintable())
     
-    name = name.replace('...', '')
+    name = re.sub(r'\|', ' ', name)
+    
+    name = re.sub(r'[<>:"/\\?*]', '_', name)
     
     name = re.sub(r'\s+', ' ', name)
-    name = name.strip(' .')
-    
-    return name
+    return name.strip()
 
 class DownloadWorker(QThread):
     finished = pyqtSignal(bool, str, list)
@@ -560,7 +560,7 @@ class SpotifyDownGUI(QWidget):
         format_layout = QHBoxLayout()
         format_layout.setSpacing(10)
         format_label = QLabel('Filename Format:')
-        format_label.setFixedWidth(100)
+        format_label.setFixedWidth(97)
         
         format_options_layout = QHBoxLayout()
         format_options_layout.setSpacing(5)
@@ -582,7 +582,7 @@ class SpotifyDownGUI(QWidget):
         self.format_group.addButton(self.title_artist_radio)
         self.format_group.addButton(self.artist_title_radio)
         
-        self.album_folder_check = QCheckBox('Album Folder (Playlist)')
+        self.album_folder_check = QCheckBox('Album Folder (Playlist Subfolder)')
         self.album_folder_check.setCursor(Qt.CursorShape.PointingHandCursor)
         self.album_folder_check.setChecked(self.use_album_folder)
         self.album_folder_check.toggled.connect(self.save_config)
@@ -660,7 +660,7 @@ class SpotifyDownGUI(QWidget):
         search_layout.setContentsMargins(9, 0, 9, 5)
         
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search tracks...")
+        self.search_input.setPlaceholderText("Search songs...")
         self.search_input.textChanged.connect(self.filter_tracks)
         self.search_input.setClearButtonEnabled(True)
         self.search_input.hide()
@@ -699,7 +699,7 @@ class SpotifyDownGUI(QWidget):
         
         tracks_layout.setContentsMargins(9, 9, 9, 9)
         tracks_tab.setLayout(tracks_layout)
-        self.tab_widget.addTab(tracks_tab, "Tracks")
+        self.tab_widget.addTab(tracks_tab, "Dashboard")
         self.hide_track_buttons()
 
     def setup_track_buttons(self):
@@ -776,39 +776,52 @@ class SpotifyDownGUI(QWidget):
         about_tab = QWidget()
         about_layout = QVBoxLayout()
         about_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        about_layout.setSpacing(10)
+        about_layout.setSpacing(3)
 
         title_label = QLabel("SpotifyDown GUI")
-        title_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #888;")
+        title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #2DC261;")
         about_layout.addWidget(title_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
+        desc_label = QLabel(
+            "SpotifyDown GUI is a graphical user interface for downloading\n"
+            "Spotify tracks, albums, and playlists using the API provided by spotifydown.com"
+        )
+        desc_label.setStyleSheet("color: #888; font-size: 13px; margin: 10px;")
+        desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        about_layout.addWidget(desc_label)
+
         sections = [
-            ("Official Site", "http://spotifydown.com/"),
+            ("Check for Updates", "https://github.com/afkarxyz/SpotifyDown-GUI/releases"),
             ("Issues", "https://github.com/afkarxyz/SpotifyDown-GUI/issues"),
-            ("Update", "https://github.com/afkarxyz/SpotifyDown-GUI/releases")
+            ("Official Site", "http://spotifydown.com/")
         ]
 
         for title, url in sections:
             section_widget = QWidget()
             section_layout = QVBoxLayout(section_widget)
-            section_layout.setSpacing(5)
+            section_layout.setSpacing(3)
             section_layout.setContentsMargins(0, 0, 0, 0)
 
             label = QLabel(title)
+            label.setStyleSheet("color: #888; font-weight: bold;")
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             section_layout.addWidget(label)
 
-            button = QPushButton("Click Here!")
+            button = QPushButton("Visit")
+            button.setFixedWidth(120)
             button.setStyleSheet("""
                 QPushButton {
-                    background-color: #2c2c2c;
-                    color: white;
-                    border: 1px solid #3f3f3f;
-                    padding: 5px 10px;
-                    border-radius: 3px;
+                    background-color: transparent;
+                    color: #888;
+                    border: 1px solid #888;
+                    padding: 8px 15px;
+                    border-radius: 15px;
                 }
                 QPushButton:hover {
-                    background-color: #3f3f3f;
+                    background-color: rgba(255, 255, 255, 0.1);
+                }
+                QPushButton:pressed {
+                    background-color: rgba(255, 255, 255, 0.2);
                 }
             """)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -818,11 +831,11 @@ class SpotifyDownGUI(QWidget):
             about_layout.addWidget(section_widget)
             
             if sections.index((title, url)) < len(sections) - 1:
-                spacer = QSpacerItem(20, 10, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
+                spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v1.4 | December 2024")
-        footer_label.setStyleSheet("font-size: 11px; color: #888;")
+        footer_label = QLabel("v1.5 | December 2024")
+        footer_label.setStyleSheet("font-size: 12px; color: #888; margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         about_tab.setLayout(about_layout)
@@ -836,6 +849,19 @@ class SpotifyDownGUI(QWidget):
         button.setFixedSize(24, 24)
         button.setToolTip(tooltip)
         button.clicked.connect(callback)
+        button.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+            }
+            QPushButton:hover {
+                background-color: rgba(255, 255, 255, 0.1);
+                border-radius: 4px;
+            }
+            QPushButton:pressed {
+                background-color: rgba(255, 255, 255, 0.2);
+            }
+        """)
 
     def paste_url(self):
         clipboard = QApplication.clipboard()
@@ -1222,7 +1248,7 @@ class SpotifyDownGUI(QWidget):
         self.time_label.hide()
 
     def reset_window_size(self):
-        self.resize(self.width(), 450)
+        self.resize(self.width(), 500)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
