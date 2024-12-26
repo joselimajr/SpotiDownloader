@@ -23,31 +23,32 @@
 > [!IMPORTANT]  
 > Due to updates in the API, a token is required periodically. It seems that the token expiration period is around 10 minutes. Follow the steps below to obtain the token.
 
-## Obtaining Tokens Manually
+## 1. Obtaining Tokens Manually
+
+![image](https://github.com/user-attachments/assets/00448018-482f-4b19-b143-7b4ee8d9bca9)
 
 1. Visit [https://spotifydown.com](https://spotifydown.com/) and open the **Network** tab in your browser's developer tools (press `F12`).  
 2. While the Network tab is open, press the download button. Then, press the second download button.
 3. Filter the requests to display only **Fetch/XHR**, then look for `{track_id}?token=` and click on it.  
 4. Open the **Payload** tab.
-   
-![image](https://github.com/user-attachments/assets/00448018-482f-4b19-b143-7b4ee8d9bca9)
-
 5. Copy the token value.
+   
+## 2. Obtaining Tokens Semi-Automatically
 
-#### Or you can use this userscript [Token Grabber](https://github.com/afkarxyz/SpotifyDown-GUI/raw/refs/heads/main/TokenGrabber.user.js)
+![image](https://github.com/user-attachments/assets/7c79c2da-9c64-4000-ad85-b8e8eb68fe69)
 
-![image](https://github.com/user-attachments/assets/f0a90511-973f-4917-8de9-5f34cf346f36)
-
-> [!NOTE]  
+> [!NOTE]
+> Wait until Cloudflare verification is successful, then press **Get Token**
+> 
 > Requires **Tampermonkey**
 
-## Obtaining Tokens Automatically
+#### Install [Token Grabber Script](https://github.com/afkarxyz/SpotifyDown-GUI/raw/refs/heads/main/TokenGrabber.user.js)
 
-**Normal** speed has a 5-second delay, and **Slow** speed has a 10-second delay. These delays are required for Cloudflare verification.
+## 3. Obtaining Tokens Automatically
 
-![image](https://github.com/user-attachments/assets/ec72ef14-e25d-4cfd-ab70-852fac00fa41)
+![image](https://github.com/user-attachments/assets/3c264911-d132-4d39-96ce-dce4b201022b)
 
 > [!NOTE]  
 > Requires **Google Chrome**
 
-#### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v1.1/TokenGrabber.exe) Token Grabber
+#### Download [Token Grabber](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v1.2/TokenGrabber.exe)
