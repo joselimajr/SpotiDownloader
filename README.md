@@ -2,7 +2,7 @@
 
 **SpotifyDown GUI** is a graphical user interface for downloading Spotify tracks, albums, and playlists using the API provided by spotifydown.com
 
-### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v1.6/SpotifyDown.exe) SpotifyDown GUI
+### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v1.7/SpotifyDown.exe) SpotifyDown GUI
 
 > [!IMPORTANT]  
 > Due to updates in the API, a token is required periodically. It seems that the token expiration period is around 10 minutes.
@@ -18,11 +18,11 @@
   
 ## Screenshots
 
-![image](https://github.com/user-attachments/assets/2c7d7572-85b1-48ef-a000-02b753179f2b)
+![image](https://github.com/user-attachments/assets/985fa3ca-16e1-4ea6-8453-858754e07f94)
 
-![image](https://github.com/user-attachments/assets/051b5e1f-841f-4c6b-9515-3f699169b819)
+![image](https://github.com/user-attachments/assets/975a096d-3c0c-438b-8465-76269f8547db)
 
-![image](https://github.com/user-attachments/assets/b29dcb5b-46d8-4992-90b7-c44b10da01b1)
+![image](https://github.com/user-attachments/assets/35a150ad-5e07-4085-aafc-6ce67a784305)
 
 > [!NOTE]
 > Requires **Google Chrome**
