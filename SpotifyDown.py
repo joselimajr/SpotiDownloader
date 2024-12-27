@@ -406,7 +406,6 @@ class SpotifyDownGUI(QWidget):
         self.reset_info_widget()
         self.spotify_url.clear()
         self.hide_track_buttons()
-        self.reset_window_size()
 
     def get_base_path(self):
         if getattr(sys, 'frozen', False):
@@ -456,7 +455,7 @@ class SpotifyDownGUI(QWidget):
     def initUI(self):
         self.setWindowTitle('SpotifyDown GUI')
         self.setFixedWidth(650)
-        self.setMinimumHeight(500)
+        self.setFixedHeight(500)
         
         icon_path = os.path.join(os.path.dirname(__file__), "icon.svg")
         if os.path.exists(icon_path):
@@ -931,7 +930,6 @@ class SpotifyDownGUI(QWidget):
             
             self.update_button_states()
             self.tab_widget.setCurrentIndex(0)
-            self.reset_window_size()
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to fetch tracks: {str(e)}")
 
@@ -1273,9 +1271,6 @@ class SpotifyDownGUI(QWidget):
     def stop_timer(self):
         self.timer.stop()
         self.time_label.hide()
-
-    def reset_window_size(self):
-        self.resize(self.width(), 500)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
