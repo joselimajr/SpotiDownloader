@@ -660,7 +660,7 @@ class SpotifyDownGUI(QWidget):
         search_layout.setContentsMargins(9, 0, 9, 5)
         
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search songs...")
+        self.search_input.setPlaceholderText("Search tracks...")
         self.search_input.textChanged.connect(self.filter_tracks)
         self.search_input.setClearButtonEnabled(True)
         self.search_input.hide()
@@ -709,7 +709,7 @@ class SpotifyDownGUI(QWidget):
         self.download_selected_btn = QPushButton('Download Selected')
         self.download_all_btn = QPushButton('Download All')
         self.remove_btn = QPushButton('Remove Selected')
-        self.clear_btn = QPushButton('Clear All')
+        self.clear_btn = QPushButton('Clear')
         
         self.original_button_width = 150
         
@@ -792,8 +792,8 @@ class SpotifyDownGUI(QWidget):
 
         sections = [
             ("Check for Updates", "https://github.com/afkarxyz/SpotifyDown-GUI/releases"),
-            ("Issues", "https://github.com/afkarxyz/SpotifyDown-GUI/issues"),
-            ("Official Site", "http://spotifydown.com/")
+            ("Report an Issue", "https://github.com/afkarxyz/SpotifyDown-GUI/issues"),
+            ("SpotifyDown Site", "http://spotifydown.com/")
         ]
 
         for title, url in sections:
@@ -807,21 +807,21 @@ class SpotifyDownGUI(QWidget):
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             section_layout.addWidget(label)
 
-            button = QPushButton("Visit")
-            button.setFixedWidth(120)
+            button = QPushButton("Click Here!")
+            button.setFixedWidth(150)
             button.setStyleSheet("""
                 QPushButton {
                     background-color: transparent;
                     color: #888;
                     border: 1px solid #888;
-                    padding: 8px 15px;
+                    padding: 6px;
                     border-radius: 15px;
                 }
                 QPushButton:hover {
-                    background-color: rgba(255, 255, 255, 0.1);
+                    background-color: #424242;
                 }
                 QPushButton:pressed {
-                    background-color: rgba(255, 255, 255, 0.2);
+                    background-color: #575757;
                 }
             """)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -834,7 +834,7 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v1.5 | December 2024")
+        footer_label = QLabel("v1.6 | December 2024")
         footer_label.setStyleSheet("font-size: 12px; color: #888; margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -855,11 +855,11 @@ class SpotifyDownGUI(QWidget):
                 border: none;
             }
             QPushButton:hover {
-                background-color: rgba(255, 255, 255, 0.1);
+                background-color: #424242;
                 border-radius: 4px;
             }
             QPushButton:pressed {
-                background-color: rgba(255, 255, 255, 0.2);
+                background-color: #575757;
             }
         """)
 
@@ -1035,7 +1035,7 @@ class SpotifyDownGUI(QWidget):
             self.type_label.setText(f"<b>Track</b> {duration}")
         else:
             total_tracks = len(self.tracks)
-            track_text = "1 song" if total_tracks == 1 else f"{total_tracks} songs"
+            track_text = "1 track" if total_tracks == 1 else f"{total_tracks} tracks"
             
             if self.is_album:
                 self.type_label.setText(f"<b>Album</b> {track_text}")
@@ -1068,7 +1068,7 @@ class SpotifyDownGUI(QWidget):
             self.download_selected_btn.hide()
             self.remove_btn.hide()
             self.download_all_btn.setText('Download')
-            self.clear_btn.setText('Clear')
+            self.clear_btn.setText('Cancel')
             
             self.btn_layout.setContentsMargins(0, 10, 0, 0)
             for btn in [self.download_all_btn, self.clear_btn]:
@@ -1077,7 +1077,7 @@ class SpotifyDownGUI(QWidget):
             self.download_selected_btn.show()
             self.remove_btn.show()
             self.download_all_btn.setText('Download All')
-            self.clear_btn.setText('Clear All')
+            self.clear_btn.setText('Clear')
             
             self.btn_layout.setContentsMargins(0, 5, 0, 0)
             for btn in [self.download_selected_btn, self.download_all_btn, self.remove_btn, self.clear_btn]:
