@@ -11,7 +11,7 @@ from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
     QLabel, QFileDialog, QListWidget, QMessageBox, QTextEdit, QTabWidget,
     QAbstractItemView, QSpacerItem, QSizePolicy, QProgressBar, QHBoxLayout,
-    QButtonGroup, QRadioButton, QCheckBox
+    QButtonGroup, QRadioButton, QCheckBox, QComboBox
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize, QTimer, QTime
 from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap
@@ -106,7 +106,7 @@ class DownloadWorker(QThread):
     progress = pyqtSignal(str, int)
     token_error = pyqtSignal()
     
-    def __init__(self, tracks, outpath, token, is_single_track=False, is_album=False, is_playlist=False, album_or_playlist_name='', artist_title_radio=False, album_folder_check=False):
+    def __init__(self, tracks, outpath, token, is_single_track=False, is_album=False, is_playlist=False, album_or_playlist_name='', artist_title_radio=False, album_folder_check=False, max_retries=3):
         super().__init__()
         self.tracks = tracks
         self.outpath = outpath
@@ -121,7 +121,7 @@ class DownloadWorker(QThread):
         self.is_stopped = False
         self.failed_tracks = []
         self.skipped_tracks = []
-        self.MAX_RETRIES = 3
+        self.MAX_RETRIES = max_retries
         self.TIMEOUT = 5
         self.last_emitted_progress = 0
 
@@ -419,6 +419,7 @@ class SpotifyDownGUI(QWidget):
         self.last_output_path = os.path.expanduser("~\\Music")
         self.filename_format = "title_artist"
         self.use_album_folder = False
+        self.retry_count = 3
         
         cache_path = os.path.join(self.get_base_path(), ".spotifydown")
         if os.path.exists(cache_path):
@@ -429,6 +430,7 @@ class SpotifyDownGUI(QWidget):
                     self.last_output_path = data.get("output_path", self.last_output_path)
                     self.filename_format = data.get("filename_format", "title_artist")
                     self.use_album_folder = data.get("use_album_folder", False)
+                    self.retry_count = data.get("retry_count", 3)
             except:
                 pass
 
@@ -439,7 +441,8 @@ class SpotifyDownGUI(QWidget):
                 "token": self.token_input.text().strip(),
                 "output_path": self.output_dir.text().strip(),
                 "filename_format": "artist_title" if self.artist_title_radio.isChecked() else "title_artist",
-                "use_album_folder": self.album_folder_check.isChecked()
+                "use_album_folder": self.album_folder_check.isChecked(),
+                "retry_count": int(self.retry_dropdown.currentText())
             }
             with open(cache_path, "w") as f:
                 json.dump(data, f)
@@ -558,9 +561,18 @@ class SpotifyDownGUI(QWidget):
         self.main_layout.addLayout(output_layout)
 
         format_layout = QHBoxLayout()
-        format_layout.setSpacing(10)
-        format_label = QLabel('Filename Format:')
-        format_label.setFixedWidth(97)
+        format_layout.setSpacing(5)
+        format_label = QLabel('Settings:')
+        format_label.setFixedWidth(100)
+        
+        self.retry_label = QLabel('Retry:')
+        self.retry_dropdown = QComboBox()
+        for i in range(1, 11):
+            self.retry_dropdown.addItem(str(i))
+        self.retry_dropdown.setCurrentText(str(self.retry_count))
+        self.retry_dropdown.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.retry_dropdown.setFixedWidth(75)
+        self.retry_dropdown.currentTextChanged.connect(self.save_config)
         
         format_options_layout = QHBoxLayout()
         format_options_layout.setSpacing(5)
@@ -582,21 +594,24 @@ class SpotifyDownGUI(QWidget):
         self.format_group.addButton(self.title_artist_radio)
         self.format_group.addButton(self.artist_title_radio)
         
-        self.album_folder_check = QCheckBox('Album Folder (Playlist Subfolder)')
+        self.album_folder_check = QCheckBox('Album Folder')
         self.album_folder_check.setCursor(Qt.CursorShape.PointingHandCursor)
         self.album_folder_check.setChecked(self.use_album_folder)
         self.album_folder_check.toggled.connect(self.save_config)
         
         format_layout.addWidget(format_label)
+        format_layout.addWidget(self.retry_label)
+        format_layout.addWidget(self.retry_dropdown)
+        format_layout.addSpacing(8)
         format_layout.addWidget(self.title_artist_radio)
-        format_layout.addSpacing(5)
+        format_layout.addSpacing(2)
         format_layout.addWidget(self.artist_title_radio)
-        format_layout.addSpacing(15)
+        format_layout.addSpacing(8)
         format_layout.addWidget(self.album_folder_check)
         format_layout.addStretch(1)
         
         self.main_layout.addLayout(format_layout)
-
+    
     def setup_tabs(self):
         self.tab_widget = QTabWidget()
         self.main_layout.addWidget(self.tab_widget)
@@ -834,7 +849,7 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v1.6 | December 2024")
+        footer_label = QLabel("v1.7 | December 2024")
         footer_label.setStyleSheet("font-size: 12px; color: #888; margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -1150,7 +1165,8 @@ class SpotifyDownGUI(QWidget):
             self.is_playlist, 
             self.album_or_playlist_name,
             self.artist_title_radio.isChecked(),
-            self.album_folder_check.isChecked()
+            self.album_folder_check.isChecked(),
+            int(self.retry_dropdown.currentText())
         )
         self.worker.finished.connect(self.on_download_finished)
         self.worker.progress.connect(self.update_progress)
@@ -1223,8 +1239,19 @@ class SpotifyDownGUI(QWidget):
 
     def remove_selected_tracks(self):
         if not self.is_single_track:
+            selected_indices = []
+            for item in self.track_list.selectedItems():
+                track_num = int(item.text().split('.')[0]) - 1
+                selected_indices.append(track_num)
+            
+            self.tracks = [track for i, track in enumerate(self.tracks) if i not in selected_indices]
+            
             for item in self.track_list.selectedItems()[::-1]:
                 self.track_list.takeItem(self.track_list.row(item))
+            
+            self.track_list.clear()
+            for i, track in enumerate(self.tracks, 1):
+                self.track_list.addItem(f"{i}. {track.title} - {track.artists} - {track.duration}")
 
     def clear_tracks(self):
         if hasattr(self, 'original_items'):
