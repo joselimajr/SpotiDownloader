@@ -2,6 +2,7 @@ import sys
 import io
 import re
 import requests
+import unicodedata
 from typing import Dict, Any
 from spotapi import Song, PublicAlbum, PublicPlaylist
 
@@ -10,10 +11,23 @@ if sys.stdout is None or not hasattr(sys.stdout, 'buffer'):
 else:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-def clean_unicode_text(text: str) -> str:
+def is_emoji(char):
+    return unicodedata.category(char).startswith(('So', 'Sm', 'Sk', 'Sc'))
+
+def clean_text(text: str) -> str:
     if not isinstance(text, str):
         text = str(text)
-    return ''.join(char for char in text if ord(char) < 65536)
+    
+    cleaned = ''.join(char for char in text if not is_emoji(char))
+    
+    cleaned = re.sub(r'\.{2,}$|…$|\.$', '', cleaned)
+    
+    cleaned = ' '.join(cleaned.split())
+    
+    return cleaned.strip()
+
+def clean_unicode_text(text: str) -> str:
+    return clean_text(text)
 
 def format_duration(milliseconds: int) -> str:
     total_seconds = milliseconds // 1000
@@ -26,7 +40,7 @@ def safe_unicode_join(artists):
         artist_names = []
         for artist in artists:
             if isinstance(artist, str):
-                cleaned_name = clean_unicode_text(artist)
+                cleaned_name = clean_text(artist)
                 artist_names.append(cleaned_name)
             else:
                 artist_names.append(str(artist))
