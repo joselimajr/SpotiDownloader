@@ -2,7 +2,6 @@ import sys
 import os
 from dataclasses import dataclass
 from datetime import datetime
-import json
 import requests
 import re
 import asyncio
@@ -10,10 +9,10 @@ import asyncio
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
     QLabel, QFileDialog, QListWidget, QMessageBox, QTextEdit, QTabWidget,
-    QAbstractItemView, QSpacerItem, QSizePolicy, QProgressBar, QHBoxLayout,
+    QAbstractItemView, QSpacerItem, QSizePolicy, QProgressBar,
     QButtonGroup, QRadioButton, QCheckBox, QComboBox
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize, QTimer, QTime
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize, QTimer, QTime, QSettings
 from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
@@ -92,14 +91,12 @@ def handle_error_response(response):
         return f"Error: {str(e)}"
 
 def sanitize_filename(name: str) -> str:
+    invalid_chars = '<>:"/\\?*|'
+    trans_table = str.maketrans(invalid_chars, '_' * len(invalid_chars))
+    
     name = ''.join(char for char in name if ord(char) < 128 and char.isprintable())
     
-    name = re.sub(r'\|', ' ', name)
-    
-    name = re.sub(r'[<>:"/\\?*]', '_', name)
-    
-    name = re.sub(r'\s+', ' ', name)
-    return name.strip()
+    return ' '.join(name.translate(trans_table).split())
 
 class DownloadWorker(QThread):
     finished = pyqtSignal(bool, str, list)
@@ -124,19 +121,17 @@ class DownloadWorker(QThread):
         self.MAX_RETRIES = max_retries
         self.TIMEOUT = 5
         self.last_emitted_progress = 0
+        self.total_processed = 0
 
     def calculate_progress(self, track_index, sub_progress):
         total_tracks = len(self.tracks)
-        track_weight = 100.0 / total_tracks
-        base_progress = track_index * track_weight
-        current_track_progress = (sub_progress / 100.0) * track_weight
-        new_progress = int(base_progress + current_track_progress)
+        progress = ((self.total_processed * 100) + sub_progress) / total_tracks
+        new_progress = int(progress)
         
-        if new_progress < self.last_emitted_progress:
-            return self.last_emitted_progress
-        
-        self.last_emitted_progress = new_progress
-        return new_progress
+        if new_progress > self.last_emitted_progress:
+            self.last_emitted_progress = new_progress
+            return new_progress
+        return self.last_emitted_progress
 
     def get_track_filepath(self, track):
         if self.artist_title_radio:
@@ -145,7 +140,7 @@ class DownloadWorker(QThread):
             filename = f"{track.title} - {track.artists}.mp3"
         filename = sanitize_filename(filename)
         
-        if self.album_folder_check and track.album:
+        if self.album_folder_check and self.is_playlist and track.album:
             album_folder = sanitize_filename(track.album)
             album_path = os.path.join(self.outpath, album_folder)
             os.makedirs(album_path, exist_ok=True)
@@ -208,6 +203,7 @@ class DownloadWorker(QThread):
             total_tracks = len(self.tracks)
             failed_tracks = 0
             self.last_emitted_progress = 0
+            self.total_processed = 0
             download_attempted = False
             first_attempt = True
             
@@ -222,6 +218,7 @@ class DownloadWorker(QThread):
                         f"Skipped existing file ({i+1}/{total_tracks}): {track.title} - {track.artists}", 
                         self.calculate_progress(i+1, 0)
                     )
+                    self.total_processed += 1
                     continue
 
                 download_attempted = True
@@ -229,18 +226,25 @@ class DownloadWorker(QThread):
                 success = False
                 last_progress = 0
 
-                while retry_count < self.MAX_RETRIES and not success:
+                while not success and retry_count <= self.MAX_RETRIES:
                     try:
                         while self.is_paused:
                             if self.is_stopped:
                                 return
                             self.msleep(100)
 
-                        self.progress.emit(
-                            f"Starting download ({i+1}/{total_tracks}): {track.title} - {track.artists}", 
-                            self.calculate_progress(i, last_progress)
-                        )
-                        self.msleep(500)
+                        if retry_count > 0:
+                            self.progress.emit(
+                                f"Retry attempt {retry_count} of {self.MAX_RETRIES} for: {track.title}", 
+                                self.calculate_progress(i, last_progress)
+                            )
+                            self.msleep(1000)
+                        else:
+                            self.progress.emit(
+                                f"Starting download ({i+1}/{total_tracks}): {track.title} - {track.artists}", 
+                                self.calculate_progress(i, last_progress)
+                            )
+                            self.msleep(500)
                         
                         self.progress.emit("Getting download link...", self.calculate_progress(i, 25))
                         last_progress = 25
@@ -254,6 +258,7 @@ class DownloadWorker(QThread):
                         error_msg = handle_error_response(response)
                         if error_msg:
                             if first_attempt and (response.status_code == 403 or "token" in error_msg.lower()):
+                                self.progress.emit("Token expired", 100)
                                 self.token_error.emit()
                                 return
                             raise Exception(error_msg)
@@ -284,27 +289,40 @@ class DownloadWorker(QThread):
                             self.calculate_progress(i, 100)
                         )
                         success = True
-                        self.msleep(500)
+                        self.total_processed += 1
                         
                     except Exception as e:
                         retry_count += 1
                         error_msg = self.handle_download_error(e, track)
                         
-                        if retry_count < self.MAX_RETRIES:
+                        if retry_count > self.MAX_RETRIES:
+                            failed_tracks += 1
+                            self.failed_tracks.append((track.title, track.artists, error_msg))
+                            self.total_processed += 1
+                            
+                            self.progress.emit(
+                                f"Failed to download: {track.title}", 
+                                self.calculate_progress(i+1, 100)
+                            )
+                            
+                            if download_attempted and failed_tracks == total_tracks - len(self.skipped_tracks):
+                                if first_attempt:
+                                    self.progress.emit("All downloads failed", 100)
+                                    self.finished.emit(False, error_msg, self.failed_tracks)
+                                else:
+                                    self.progress.emit("Token expired", 100)
+                                    self.token_error.emit()
+                                return
+                            break
+                        else:
                             self.progress.emit(
                                 f"Error: {error_msg}. Retry attempt {retry_count} of {self.MAX_RETRIES}...", 
                                 self.calculate_progress(i, last_progress)
                             )
                             self.msleep(1000)
-                        else:
-                            failed_tracks += 1
-                            self.failed_tracks.append((track.title, track.artists, error_msg))
-                            if download_attempted and failed_tracks == total_tracks - len(self.skipped_tracks):
-                                if not first_attempt:
-                                    self.token_error.emit()
-                                return
 
             if not self.is_stopped:
+                self.progress.emit("Finalizing...", 100)
                 if failed_tracks == 0:
                     success_message = "Download completed successfully!"
                     self.finished.emit(True, success_message, self.failed_tracks)
@@ -313,6 +331,7 @@ class DownloadWorker(QThread):
                     self.finished.emit(True, partial_success_message, self.failed_tracks)
 
         except Exception as e:
+            self.progress.emit("Error occurred", 100)
             self.finished.emit(False, self.simplify_error_message(e), self.failed_tracks)
 
     def add_metadata(self, filepath: str, track: Track):
@@ -365,11 +384,10 @@ class DownloadWorker(QThread):
 class SpotifyDownGUI(QWidget):
     def __init__(self):
         super().__init__()
+        self.settings = QSettings('SpotifyDown', 'GUI')
         self.tracks = []
         self.album_or_playlist_name = ''
         self.reset_state()
-        
-        self.load_config()
         
         self.elapsed_time = QTime(0, 0, 0)
         self.timer = QTimer(self)
@@ -377,6 +395,20 @@ class SpotifyDownGUI(QWidget):
         
         self.network_manager = QNetworkAccessManager()
         self.network_manager.finished.connect(self.on_cover_loaded)
+        
+        self.token_input = None
+        self.output_dir = None
+        self.artist_title_radio = None
+        self.album_folder_check = None
+        self.retry_dropdown = None
+        
+        self.last_token = ''
+        self.last_output_path = os.path.expanduser("~\\Music")
+        self.filename_format = 'title_artist'
+        self.use_album_folder = False
+        self.retry_count = 3
+        
+        self.load_config()
         
         self.initUI()
         
@@ -414,39 +446,20 @@ class SpotifyDownGUI(QWidget):
             return os.path.dirname(os.path.abspath(__file__))
 
     def load_config(self):
-        self.last_token = ""
-        self.last_output_path = os.path.expanduser("~\\Music")
-        self.filename_format = "title_artist"
-        self.use_album_folder = False
-        self.retry_count = 3
-        
-        cache_path = os.path.join(self.get_base_path(), ".spotifydown")
-        if os.path.exists(cache_path):
-            try:
-                with open(cache_path, "r") as f:
-                    data = json.load(f)
-                    self.last_token = data.get("token", self.last_token)
-                    self.last_output_path = data.get("output_path", self.last_output_path)
-                    self.filename_format = data.get("filename_format", "title_artist")
-                    self.use_album_folder = data.get("use_album_folder", False)
-                    self.retry_count = data.get("retry_count", 3)
-            except:
-                pass
+        self.last_token = self.settings.value('token', '')
+        self.last_output_path = self.settings.value('output_path', os.path.expanduser("~\\Music"))
+        self.filename_format = self.settings.value('filename_format', 'title_artist')
+        self.use_album_folder = self.settings.value('use_album_folder', False, type=bool)
+        self.retry_count = self.settings.value('retry_count', 3, type=int)
 
     def save_config(self):
-        try:
-            cache_path = os.path.join(self.get_base_path(), ".spotifydown")
-            data = {
-                "token": self.token_input.text().strip(),
-                "output_path": self.output_dir.text().strip(),
-                "filename_format": "artist_title" if self.artist_title_radio.isChecked() else "title_artist",
-                "use_album_folder": self.album_folder_check.isChecked(),
-                "retry_count": int(self.retry_dropdown.currentText())
-            }
-            with open(cache_path, "w") as f:
-                json.dump(data, f)
-        except Exception:
-            pass
+        if all(hasattr(self, attr) and getattr(self, attr) is not None 
+            for attr in ['output_dir', 'artist_title_radio', 'album_folder_check', 'retry_dropdown']):
+            self.settings.setValue('output_path', self.output_dir.text().strip())
+            self.settings.setValue('filename_format', 'artist_title' if self.artist_title_radio.isChecked() else 'title_artist')
+            self.settings.setValue('use_album_folder', self.album_folder_check.isChecked())
+            self.settings.setValue('retry_count', int(self.retry_dropdown.currentText()))
+            self.settings.sync()
 
     def save_format_settings(self):
         self.save_config()
@@ -503,6 +516,7 @@ class SpotifyDownGUI(QWidget):
         self.token_input = QLineEdit()
         self.token_input.setPlaceholderText("Please enter the Token value")
         self.token_input.setClearButtonEnabled(True)
+        self.token_input.textChanged.connect(self.handle_token_clear)
         
         self.token_save_icon_btn = QPushButton()
         self.token_save_btn = QPushButton('Get Token')
@@ -525,8 +539,7 @@ class SpotifyDownGUI(QWidget):
             token = await get_token()
             if token:
                 self.token_input.setText(token)
-                self.save_config()
-                QMessageBox.information(self, "Success", "Token fetched and saved successfully!")
+                QMessageBox.information(self, "Success", "Token fetched successfully! Click the save button to save it.")
             else:
                 QMessageBox.warning(self, "Error", "Failed to fetch token")
         except Exception as e:
@@ -534,7 +547,13 @@ class SpotifyDownGUI(QWidget):
 
     def get_token(self):
         asyncio.run(self._fetch_token())
-
+        
+    def handle_token_clear(self, text):
+        if not text:
+            self.settings.remove('token')
+            self.settings.sync()
+            self.last_token = ''
+            
     def setup_output_section(self):
         output_layout = QHBoxLayout()
         output_label = QLabel('Output Directory:')
@@ -566,7 +585,7 @@ class SpotifyDownGUI(QWidget):
         
         self.retry_label = QLabel('Retry:')
         self.retry_dropdown = QComboBox()
-        for i in range(1, 11):
+        for i in range(0, 11):
             self.retry_dropdown.addItem(str(i))
         self.retry_dropdown.setCurrentText(str(self.retry_count))
         self.retry_dropdown.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -848,7 +867,7 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v1.7 | December 2024")
+        footer_label = QLabel("v1.8 | December 2024")
         footer_label.setStyleSheet("font-size: 12px; color: #888; margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -891,8 +910,13 @@ class SpotifyDownGUI(QWidget):
             self.output_dir.setText(directory)
 
     def save_token(self):
-        self.save_config()
-        QMessageBox.information(self, "Success", "Saved successfully!")
+        token = self.token_input.text().strip()
+        if token:
+            self.settings.setValue('token', token)
+            self.settings.sync()
+            QMessageBox.information(self, "Success", "Token saved successfully!")
+        else:
+            QMessageBox.warning(self, "Warning", "Please enter a token before saving.")
 
     def show_token_error(self):
         QMessageBox.warning(self, "Error", "Token has expired. Please update your token.")
@@ -1237,19 +1261,17 @@ class SpotifyDownGUI(QWidget):
 
     def remove_selected_tracks(self):
         if not self.is_single_track:
-            selected_indices = []
-            for item in self.track_list.selectedItems():
-                track_num = int(item.text().split('.')[0]) - 1
-                selected_indices.append(track_num)
+            selected_rows = sorted([self.track_list.row(item) 
+                                for item in self.track_list.selectedItems()], 
+                                reverse=True)
             
-            self.tracks = [track for i, track in enumerate(self.tracks) if i not in selected_indices]
-            
-            for item in self.track_list.selectedItems()[::-1]:
-                self.track_list.takeItem(self.track_list.row(item))
+            for row in selected_rows:
+                self.tracks.pop(row)
+                self.track_list.takeItem(row)
             
             self.track_list.clear()
-            for i, track in enumerate(self.tracks, 1):
-                self.track_list.addItem(f"{i}. {track.title} - {track.artists} - {track.duration}")
+            self.track_list.addItems([f"{i}. {track.title} - {track.artists} - {track.duration}"
+                                    for i, track in enumerate(self.tracks, 1)])
 
     def clear_tracks(self):
         if hasattr(self, 'original_items'):
