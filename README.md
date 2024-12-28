@@ -24,5 +24,7 @@
 
 ![image](https://github.com/user-attachments/assets/35a150ad-5e07-4085-aafc-6ce67a784305)
 
-> [!NOTE]
-> Requires **Google Chrome**
+## Prerequisites
+
+- **Google Chrome** (for obtaining the token)  
+- **K-Lite Codec Pack** (to display cover art on Windows)  
