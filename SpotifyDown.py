@@ -103,7 +103,9 @@ class DownloadWorker(QThread):
     progress = pyqtSignal(str, int)
     token_error = pyqtSignal()
     
-    def __init__(self, tracks, outpath, token, is_single_track=False, is_album=False, is_playlist=False, album_or_playlist_name='', artist_title_radio=False, album_folder_check=False, max_retries=3):
+    def __init__(self, tracks, outpath, token, is_single_track=False, is_album=False, is_playlist=False, 
+                 album_or_playlist_name='', artist_title_radio=False, album_folder_check=False, 
+                 max_retries=3, remove_existing=False):
         super().__init__()
         self.tracks = tracks
         self.outpath = outpath
@@ -114,6 +116,7 @@ class DownloadWorker(QThread):
         self.album_or_playlist_name = album_or_playlist_name
         self.artist_title_radio = artist_title_radio
         self.album_folder_check = album_folder_check
+        self.remove_existing = remove_existing
         self.is_paused = False
         self.is_stopped = False
         self.failed_tracks = []
@@ -212,14 +215,45 @@ class DownloadWorker(QThread):
                     return
 
                 filepath = self.get_track_filepath(track)
-                if os.path.exists(filepath):
-                    self.skipped_tracks.append((track.title, track.artists))
-                    self.progress.emit(
-                        f"Skipped existing file ({i+1}/{total_tracks}): {track.title} - {track.artists}", 
-                        self.calculate_progress(i+1, 0)
+                
+                try:
+                    response = requests.get(
+                        f"https://api.spotifydown.com/download/{track.id}?token={self.token}", 
+                        headers=HEADERS,
+                        timeout=self.TIMEOUT
                     )
-                    self.total_processed += 1
-                    continue
+                    
+                    if response.status_code == 403 or (response.status_code == 200 and 'token' in response.text.lower()):
+                        self.is_stopped = True
+                        self.token_error.emit()
+                        return
+                        
+                except Exception as e:
+                    if '403' in str(e) or 'token' in str(e).lower():
+                        self.is_stopped = True
+                        self.token_error.emit()
+                        return
+
+                if os.path.exists(filepath):
+                    if self.remove_existing:
+                        try:
+                            os.remove(filepath)
+                        except Exception as e:
+                            self.failed_tracks.append((track.title, track.artists, f"Failed to remove existing file: {str(e)}"))
+                            self.progress.emit(
+                                f"Failed to remove existing file ({i+1}/{total_tracks}): {track.title} - {track.artists}", 
+                                self.calculate_progress(i+1, 0)
+                            )
+                            self.total_processed += 1
+                            continue
+                    else:
+                        self.skipped_tracks.append((track.title, track.artists))
+                        self.progress.emit(
+                            f"Skipped existing file ({i+1}/{total_tracks}): {track.title} - {track.artists}", 
+                            self.calculate_progress(i+1, 0)
+                        )
+                        self.total_processed += 1
+                        continue
 
                 download_attempted = True
                 retry_count = 0
@@ -331,8 +365,12 @@ class DownloadWorker(QThread):
                     self.finished.emit(True, partial_success_message, self.failed_tracks)
 
         except Exception as e:
-            self.progress.emit("Error occurred", 100)
-            self.finished.emit(False, self.simplify_error_message(e), self.failed_tracks)
+            if '403' in str(e) or 'token' in str(e).lower():
+                self.is_stopped = True
+                self.token_error.emit()
+            else:
+                self.progress.emit("Error occurred", 100)
+                self.finished.emit(False, self.simplify_error_message(e), self.failed_tracks)
 
     def add_metadata(self, filepath: str, track: Track):
         try:
@@ -451,6 +489,7 @@ class SpotifyDownGUI(QWidget):
         self.filename_format = self.settings.value('filename_format', 'title_artist')
         self.use_album_folder = self.settings.value('use_album_folder', False, type=bool)
         self.retry_count = self.settings.value('retry_count', 3, type=int)
+        self.remove_existing = self.settings.value('remove_existing', False, type=bool)
 
     def save_config(self):
         if all(hasattr(self, attr) and getattr(self, attr) is not None 
@@ -459,6 +498,7 @@ class SpotifyDownGUI(QWidget):
             self.settings.setValue('filename_format', 'artist_title' if self.artist_title_radio.isChecked() else 'title_artist')
             self.settings.setValue('use_album_folder', self.album_folder_check.isChecked())
             self.settings.setValue('retry_count', int(self.retry_dropdown.currentText()))
+            self.settings.setValue('remove_existing', self.remove_file_radio.isChecked())
             self.settings.sync()
 
     def save_format_settings(self):
@@ -466,9 +506,9 @@ class SpotifyDownGUI(QWidget):
         QMessageBox.information(self, "Success", "Format settings saved successfully!")
 
     def initUI(self):
-        self.setWindowTitle('SpotifyDown GUI')
+        self.setWindowTitle('SpotifyDown')
         self.setFixedWidth(650)
-        self.setFixedHeight(500)
+        self.setFixedHeight(450)
         
         icon_path = os.path.join(os.path.dirname(__file__), "icon.svg")
         if os.path.exists(icon_path):
@@ -478,7 +518,6 @@ class SpotifyDownGUI(QWidget):
         
         self.setup_spotify_section()
         self.setup_token_section()
-        self.setup_output_section()
         self.setup_tabs()
         
         self.setLayout(self.main_layout)
@@ -495,7 +534,7 @@ class SpotifyDownGUI(QWidget):
         self.paste_btn = QPushButton()
         self.fetch_btn = QPushButton('Fetch')
         
-        self.setup_button(self.paste_btn, "paste.svg", "Paste URL from clipboard", self.paste_url)
+        self.setup_button(self.paste_btn, "paste.svg", "Paste URL", self.paste_url)
         
         self.paste_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.fetch_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -514,14 +553,14 @@ class SpotifyDownGUI(QWidget):
         token_label.setFixedWidth(100)
         
         self.token_input = QLineEdit()
-        self.token_input.setPlaceholderText("Please enter the Token value")
+        self.token_input.setPlaceholderText("Please enter the Token")
         self.token_input.setClearButtonEnabled(True)
         self.token_input.textChanged.connect(self.handle_token_clear)
         
         self.token_save_icon_btn = QPushButton()
         self.token_save_btn = QPushButton('Get Token')
         
-        self.setup_button(self.token_save_icon_btn, "save.svg", "Save token", self.save_token)
+        self.setup_button(self.token_save_icon_btn, "save.svg", "Save Token", self.save_token)
         
         self.token_save_icon_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.token_save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -539,7 +578,7 @@ class SpotifyDownGUI(QWidget):
             token = await get_token()
             if token:
                 self.token_input.setText(token)
-                QMessageBox.information(self, "Success", "Token fetched successfully! Click the save button to save it.")
+                QMessageBox.information(self, "Success", "Token fetched successfully!")
             else:
                 QMessageBox.warning(self, "Error", "Failed to fetch token")
         except Exception as e:
@@ -558,6 +597,7 @@ class SpotifyDownGUI(QWidget):
         output_layout = QHBoxLayout()
         output_label = QLabel('Output Directory:')
         output_label.setFixedWidth(100)
+        
         self.output_dir = QLineEdit()
         self.output_dir.setText(self.last_output_path)
         self.output_dir.textChanged.connect(self.save_config)
@@ -569,66 +609,14 @@ class SpotifyDownGUI(QWidget):
         
         self.open_dir_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.output_browse.setCursor(Qt.CursorShape.PointingHandCursor)
-        
         self.output_browse.clicked.connect(self.browse_output)
         
         output_layout.addWidget(output_label)
         output_layout.addWidget(self.output_dir)
         output_layout.addWidget(self.open_dir_btn)
         output_layout.addWidget(self.output_browse)
+        
         self.main_layout.addLayout(output_layout)
-
-        format_layout = QHBoxLayout()
-        format_layout.setSpacing(5)
-        format_label = QLabel('Settings:')
-        format_label.setFixedWidth(100)
-        
-        self.retry_label = QLabel('Retry:')
-        self.retry_dropdown = QComboBox()
-        for i in range(0, 11):
-            self.retry_dropdown.addItem(str(i))
-        self.retry_dropdown.setCurrentText(str(self.retry_count))
-        self.retry_dropdown.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.retry_dropdown.setFixedWidth(75)
-        self.retry_dropdown.currentTextChanged.connect(self.save_config)
-        
-        format_options_layout = QHBoxLayout()
-        format_options_layout.setSpacing(5)
-        
-        self.format_group = QButtonGroup(self)
-        self.title_artist_radio = QRadioButton('Title - Artist')
-        self.title_artist_radio.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.title_artist_radio.toggled.connect(self.save_config)
-        
-        self.artist_title_radio = QRadioButton('Artist - Title')
-        self.artist_title_radio.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.artist_title_radio.toggled.connect(self.save_config)
-        
-        if self.filename_format == "artist_title":
-            self.artist_title_radio.setChecked(True)
-        else:
-            self.title_artist_radio.setChecked(True)
-                
-        self.format_group.addButton(self.title_artist_radio)
-        self.format_group.addButton(self.artist_title_radio)
-        
-        self.album_folder_check = QCheckBox('Album Folder')
-        self.album_folder_check.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.album_folder_check.setChecked(self.use_album_folder)
-        self.album_folder_check.toggled.connect(self.save_config)
-        
-        format_layout.addWidget(format_label)
-        format_layout.addWidget(self.retry_label)
-        format_layout.addWidget(self.retry_dropdown)
-        format_layout.addSpacing(8)
-        format_layout.addWidget(self.title_artist_radio)
-        format_layout.addSpacing(2)
-        format_layout.addWidget(self.artist_title_radio)
-        format_layout.addSpacing(8)
-        format_layout.addWidget(self.album_folder_check)
-        format_layout.addStretch(1)
-        
-        self.main_layout.addLayout(format_layout)
     
     def setup_tabs(self):
         self.tab_widget = QTabWidget()
@@ -636,6 +624,7 @@ class SpotifyDownGUI(QWidget):
 
         self.setup_tracks_tab()
         self.setup_process_tab()
+        self.setup_settings_tab()
         self.setup_about_tab()
 
     def filter_tracks(self):
@@ -805,21 +794,195 @@ class SpotifyDownGUI(QWidget):
         self.stop_btn.hide()
         self.pause_resume_btn.hide()
 
+    def setup_settings_tab(self):
+        settings_tab = QWidget()
+        settings_layout = QVBoxLayout()
+        settings_layout.setSpacing(10)
+        settings_layout.setContentsMargins(9, 9, 9, 9)
+
+        output_group = QWidget()
+        output_layout = QVBoxLayout(output_group)
+        output_layout.setSpacing(5)
+        
+        output_label = QLabel('Output Directory')
+        output_label.setStyleSheet("font-weight: bold; color: palette(text);")
+        output_layout.addWidget(output_label)
+        
+        output_dir_layout = QHBoxLayout()
+        self.output_dir = QLineEdit()
+        self.output_dir.setText(self.last_output_path)
+        self.output_dir.textChanged.connect(self.save_config)
+        
+        self.open_dir_btn = QPushButton()
+        self.output_browse = QPushButton('Browse')
+        
+        self.setup_button(self.open_dir_btn, "folder.svg", "Open output directory", self.open_output_dir)
+        
+        self.open_dir_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.output_browse.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.output_browse.clicked.connect(self.browse_output)
+        
+        output_dir_layout = QHBoxLayout()
+        output_dir_layout.addWidget(self.output_dir)
+        output_dir_layout.addWidget(self.open_dir_btn)
+        output_dir_layout.addWidget(self.output_browse)
+        output_layout.addLayout(output_dir_layout)
+        
+        settings_layout.addWidget(output_group)
+        
+        download_group = QWidget()
+        download_layout = QVBoxLayout(download_group)
+        download_layout.setSpacing(5)
+        
+        download_label = QLabel('Download Settings')
+        download_label.setStyleSheet("font-weight: bold; color: palette(text);")
+        download_layout.addWidget(download_label)
+        
+        retry_layout = QHBoxLayout()
+        self.retry_label = QLabel('Maximum Retry Attempts:')
+        self.retry_label.setStyleSheet("color: palette(text);")
+        self.retry_dropdown = QComboBox()
+        for i in range(0, 11):
+            self.retry_dropdown.addItem(str(i))
+        self.retry_dropdown.setCurrentText(str(self.retry_count))
+        self.retry_dropdown.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.retry_dropdown.setFixedWidth(75)
+        self.retry_dropdown.currentTextChanged.connect(self.save_config)
+        
+        retry_layout.addWidget(self.retry_label)
+        retry_layout.addWidget(self.retry_dropdown)
+        retry_layout.addStretch()
+        download_layout.addLayout(retry_layout)
+        
+        file_handling_layout = QHBoxLayout()
+        file_handling_label = QLabel('Existing File Handling:')
+        file_handling_label.setStyleSheet("color: palette(text);")
+        
+        self.file_handling_group = QButtonGroup(self)
+        self.skip_file_radio = QRadioButton('Skip Downloaded Files')
+        self.skip_file_radio.setStyleSheet("color: palette(text);")
+        self.skip_file_radio.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.skip_file_radio.toggled.connect(self.save_config)
+        
+        self.remove_file_radio = QRadioButton('Remove and Re-download Files')
+        self.remove_file_radio.setStyleSheet("color: palette(text);")
+        self.remove_file_radio.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.remove_file_radio.toggled.connect(self.save_config)
+        
+        self.skip_file_radio.setChecked(True)
+        
+        self.file_handling_group.addButton(self.skip_file_radio)
+        self.file_handling_group.addButton(self.remove_file_radio)
+        
+        file_handling_layout.addWidget(file_handling_label)
+        file_handling_layout.addWidget(self.skip_file_radio)
+        file_handling_layout.addWidget(self.remove_file_radio)
+        file_handling_layout.addStretch()
+        download_layout.addLayout(file_handling_layout)
+        
+        settings_layout.addWidget(download_group)
+        
+        file_group = QWidget()
+        file_layout = QVBoxLayout(file_group)
+        file_layout.setSpacing(5)
+        
+        file_label = QLabel('File Settings')
+        file_label.setStyleSheet("font-weight: bold; color: palette(text);")
+        file_layout.addWidget(file_label)
+        
+        format_layout = QHBoxLayout()
+        format_label = QLabel('Filename Format:')
+        format_label.setStyleSheet("color: palette(text);")
+        
+        self.format_group = QButtonGroup(self)
+        self.title_artist_radio = QRadioButton('Title - Artist')
+        self.title_artist_radio.setStyleSheet("color: palette(text);")
+        self.title_artist_radio.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.title_artist_radio.toggled.connect(self.save_config)
+        
+        self.artist_title_radio = QRadioButton('Artist - Title')
+        self.artist_title_radio.setStyleSheet("color: palette(text);")
+        self.artist_title_radio.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.artist_title_radio.toggled.connect(self.save_config)
+        
+        if self.filename_format == "artist_title":
+            self.artist_title_radio.setChecked(True)
+        else:
+            self.title_artist_radio.setChecked(True)
+        
+        self.format_group.addButton(self.title_artist_radio)
+        self.format_group.addButton(self.artist_title_radio)
+        
+        format_layout.addWidget(format_label)
+        format_layout.addWidget(self.title_artist_radio)
+        format_layout.addWidget(self.artist_title_radio)
+        format_layout.addStretch()
+        file_layout.addLayout(format_layout)
+        
+        folder_label = QLabel('Folder Organization:')
+        folder_label.setStyleSheet("color: palette(text);")
+        file_layout.addWidget(folder_label)
+        
+        self.album_folder_check = QCheckBox('Create Album Subfolders for Playlist Downloads')
+        self.album_folder_check.setStyleSheet("color: palette(text);")
+        self.album_folder_check.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.album_folder_check.setChecked(self.use_album_folder)
+        self.album_folder_check.toggled.connect(self.save_config)
+        file_layout.addWidget(self.album_folder_check)
+        
+        settings_layout.addWidget(file_group)
+        
+        reset_layout = QHBoxLayout()
+        reset_layout.addStretch()
+        
+        self.reset_default_btn = QPushButton('Reset Default')
+        self.reset_default_btn.setFixedWidth(120)
+        self.reset_default_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.reset_default_btn.clicked.connect(self.reset_default_settings)
+        reset_layout.addWidget(self.reset_default_btn)
+        reset_layout.addStretch()
+        settings_layout.addLayout(reset_layout)
+        
+        settings_layout.addStretch()
+        settings_tab.setLayout(settings_layout)
+        self.tab_widget.addTab(settings_tab, "Settings")
+
+    def reset_default_settings(self):
+        default_music_path = os.path.expanduser("~\\Music")
+        self.output_dir.setText(default_music_path)
+        self.title_artist_radio.setChecked(True)
+        self.album_folder_check.setChecked(False)
+        self.retry_dropdown.setCurrentText('3')
+        self.skip_file_radio.setChecked(True)
+        
+        self.settings.setValue('output_path', default_music_path)
+        self.settings.setValue('filename_format', 'title_artist')
+        self.settings.setValue('use_album_folder', False)
+        self.settings.setValue('retry_count', 3)
+        self.settings.setValue('remove_existing', False)
+        self.settings.sync()
+        
+        QMessageBox.information(self, "Success", "Settings have been reset to default values!")
+    
     def setup_about_tab(self):
         about_tab = QWidget()
         about_layout = QVBoxLayout()
         about_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         about_layout.setSpacing(3)
 
-        title_label = QLabel("SpotifyDown GUI")
-        title_label.setStyleSheet("font-size: 24px; font-weight: bold; color: #2DC261;")
+        title_label = QLabel("SpotifyDown")
+        title_label.setStyleSheet("""
+            font-size: 24px;
+            font-weight: bold;
+            color: #2DC261;
+        """)
         about_layout.addWidget(title_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         desc_label = QLabel(
-            "SpotifyDown GUI is a graphical user interface for downloading\n"
-            "Spotify tracks, albums, and playlists using the API provided by spotifydown.com"
+            "SpotifyDown is a GUI tool for downloading Spotify tracks, albums, and playlists\n"
+            "using the API provided by spotifydown.com"
         )
-        desc_label.setStyleSheet("color: #888; font-size: 13px; margin: 10px;")
+        desc_label.setStyleSheet("color: palette(text); font-size: 13px; margin: 10px;")
         desc_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         about_layout.addWidget(desc_label)
 
@@ -836,7 +999,7 @@ class SpotifyDownGUI(QWidget):
             section_layout.setContentsMargins(0, 0, 0, 0)
 
             label = QLabel(title)
-            label.setStyleSheet("color: #888; font-weight: bold;")
+            label.setStyleSheet("color: palette(text); font-weight: bold;")
             label.setAlignment(Qt.AlignmentFlag.AlignCenter)
             section_layout.addWidget(label)
 
@@ -844,17 +1007,17 @@ class SpotifyDownGUI(QWidget):
             button.setFixedWidth(150)
             button.setStyleSheet("""
                 QPushButton {
-                    background-color: transparent;
-                    color: #888;
-                    border: 1px solid #888;
+                    background-color: palette(button);
+                    color: palette(button-text);
+                    border: 1px solid palette(mid);
                     padding: 6px;
                     border-radius: 15px;
                 }
                 QPushButton:hover {
-                    background-color: #424242;
+                    background-color: palette(light);
                 }
                 QPushButton:pressed {
-                    background-color: #575757;
+                    background-color: palette(midlight);
                 }
             """)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -867,8 +1030,8 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v1.8 | December 2024")
-        footer_label.setStyleSheet("font-size: 12px; color: #888; margin-top: 10px;")
+        footer_label = QLabel("v1.9 | December 2024")
+        footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         about_tab.setLayout(about_layout)
@@ -888,11 +1051,11 @@ class SpotifyDownGUI(QWidget):
                 border: none;
             }
             QPushButton:hover {
-                background-color: #424242;
+                background-color: palette(light);
                 border-radius: 4px;
             }
             QPushButton:pressed {
-                background-color: #575757;
+                background-color: palette(light);
             }
         """)
 
@@ -1188,7 +1351,8 @@ class SpotifyDownGUI(QWidget):
             self.album_or_playlist_name,
             self.artist_title_radio.isChecked(),
             self.album_folder_check.isChecked(),
-            int(self.retry_dropdown.currentText())
+            int(self.retry_dropdown.currentText()),
+            self.remove_file_radio.isChecked()
         )
         self.worker.finished.connect(self.on_download_finished)
         self.worker.progress.connect(self.update_progress)
