@@ -21,8 +21,8 @@
 
 || Program | Function |
 |------|-------------|----------|
-| <img src="./Archived/images/chrome.png" width="24" height="24" alt="Chrome"/> | Google Chrome | Obtaining the token |
-| <img src="./Archived/images/k-lite.png" width="24" height="24" alt="Chrome"/> | K-Lite Codec Pack | Display cover art on Windows |
+| <img src="./Archived/assets/chrome.svg" width="24" height="24" alt="Chrome"/> | Google Chrome | Obtaining the token |
+| <img src="./Archived/assets/k-lite.svg" width="24" height="24" alt="Chrome"/> | K-Lite Codec Pack | Display cover art on Windows |
 
 ## Screenshots
 
