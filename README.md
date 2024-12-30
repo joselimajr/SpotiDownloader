@@ -19,10 +19,10 @@
   
 ## Prerequisites
 
-|| Program | Function |
-|------|-------------|----------|
-| <img src="./Archived/assets/chrome.svg" width="24" height="24" alt="Chrome"/> | Google Chrome | Obtaining the token |
-| <img src="./Archived/assets/k-lite.svg" width="24" height="24" alt="Chrome"/> | K-Lite Codec Pack | Display cover art on Windows |
+| Program  | Function |
+| :-- | :-- |
+| Google Chrome <img src="./Archived/assets/chrome.svg" alt="Chrome" align=left width=24 height=24> | Obtaining the token |
+| K-Lite Codec Pack <img src="./Archived/assets/k-lite.svg" alt="K-Lite Codec Pack" align=left width=24 height=24> | Display cover art on Windows |
 
 ## Screenshots
 
