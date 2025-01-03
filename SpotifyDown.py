@@ -1255,7 +1255,7 @@ class SpotifyDownGUI(QWidget):
         
         if self.is_single_track:
             duration = self.tracks[0].duration if self.tracks else "0:00"
-            self.type_label.setText(f"<b>Track</b> {duration}")
+            self.type_label.setText(f"<b>Duration</b> {duration}")
         else:
             total_tracks = len(self.tracks)
             track_text = "1 track" if total_tracks == 1 else f"{total_tracks} tracks"
