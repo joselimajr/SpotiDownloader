@@ -1,5 +1,6 @@
 import sys
 import os
+import time
 from dataclasses import dataclass
 from datetime import datetime
 import requests
@@ -101,11 +102,12 @@ def sanitize_filename(name: str) -> str:
 class DownloadWorker(QThread):
     finished = pyqtSignal(bool, str, list)
     progress = pyqtSignal(str, int)
+    detailed_progress = pyqtSignal(str, float, float, float)
     token_error = pyqtSignal()
     
     def __init__(self, tracks, outpath, token, is_single_track=False, is_album=False, is_playlist=False, 
                  album_or_playlist_name='', artist_title_radio=False, album_folder_check=False, 
-                 max_retries=3, remove_existing=False):
+                 max_retries=3):
         super().__init__()
         self.tracks = tracks
         self.outpath = outpath
@@ -116,7 +118,6 @@ class DownloadWorker(QThread):
         self.album_or_playlist_name = album_or_playlist_name
         self.artist_title_radio = artist_title_radio
         self.album_folder_check = album_folder_check
-        self.remove_existing = remove_existing
         self.is_paused = False
         self.is_stopped = False
         self.failed_tracks = []
@@ -125,6 +126,23 @@ class DownloadWorker(QThread):
         self.TIMEOUT = 5
         self.last_emitted_progress = 0
         self.total_processed = 0
+        self.current_download_start = 0
+        self.last_downloaded = 0
+        self.last_speed_update = 0
+
+    def validate_token(self):
+        try:
+            if not self.tracks:
+                return True
+                
+            response = requests.get(
+                f"https://api.spotifydown.com/download/{self.tracks[0].id}?token={self.token}",
+                headers=HEADERS,
+                timeout=self.TIMEOUT
+            )
+            return not (response.status_code == 403 or 'token' in response.text.lower())
+        except Exception as e:
+            return '403' not in str(e) and 'token' not in str(e).lower()
 
     def calculate_progress(self, track_index, sub_progress):
         total_tracks = len(self.tracks)
@@ -151,15 +169,21 @@ class DownloadWorker(QThread):
         
         return os.path.join(self.outpath, filename)
 
+    def scan_existing_files(self):
+        existing_files = []
+        for track in self.tracks:
+            filepath = self.get_track_filepath(track)
+            if os.path.exists(filepath):
+                existing_files.append(track)
+        return existing_files
+
     def simplify_error_message(self, error):
         error_str = str(error).lower()
         
         if 'timeout' in error_str or 'timed out' in error_str:
             return "Connection timed out"
-            
         if 'missing required request header' in error_str or 'header' in error_str:
             return "Invalid request. Please try downloading directly from spotifydown.com or try again later"
-            
         if 'status code: 400' in error_str:
             return "Invalid request"
         if 'status code: 403' in error_str:
@@ -168,7 +192,6 @@ class DownloadWorker(QThread):
             return "Too many requests"
         if 'status code: 500' in error_str:
             return "Server error"
-            
         if 'connectionerror' in error_str:
             return "Connection failed"
             
@@ -201,60 +224,93 @@ class DownloadWorker(QThread):
         
         return report_error
 
+    def format_size(self, size_bytes):
+        for unit in ['B', 'KB', 'MB', 'GB']:
+            if size_bytes < 1024:
+                return f"{size_bytes:.2f}{unit}"
+            size_bytes /= 1024
+        return f"{size_bytes:.2f}GB"
+
+    def format_speed(self, speed_bytes):
+        speed_mbps = (speed_bytes * 8) / (1024 * 1024)
+        return f"{speed_mbps:.2f}Mbps"
+    
+    def get_file_size(self, url):
+        response = requests.head(url, timeout=self.TIMEOUT)
+        return int(response.headers.get('content-length', 0))
+
+    def download_with_progress(self, url, expected_size):
+        response = requests.get(url, stream=True, timeout=self.TIMEOUT)
+        response.raise_for_status()
+        
+        self.current_download_start = time.time()
+        self.last_downloaded = 0
+        self.last_speed_update = self.current_download_start
+        
+        downloaded_size = 0
+        chunk_size = 8192
+        chunks = []
+
+        for chunk in response.iter_content(chunk_size=chunk_size):
+            if self.is_stopped:
+                return None
+                
+            while self.is_paused:
+                if self.is_stopped:
+                    return None
+                self.msleep(100)
+                self.current_download_start = time.time()
+                
+            if chunk:
+                chunks.append(chunk)
+                downloaded_size += len(chunk)
+                current_time = time.time()
+                time_diff = current_time - self.last_speed_update
+                
+                if time_diff >= 0.5 or downloaded_size >= expected_size:
+                    speed = (downloaded_size - self.last_downloaded) / time_diff
+                    self.detailed_progress.emit(
+                        f"Downloading",
+                        downloaded_size,
+                        expected_size,
+                        speed
+                    )
+                    self.last_downloaded = downloaded_size
+                    self.last_speed_update = current_time
+
+        if downloaded_size > self.last_downloaded:
+            self.detailed_progress.emit(
+                f"Downloading",
+                downloaded_size,
+                expected_size,
+                0
+            )
+
+        return b''.join(chunks)
+
     def run(self):
         try:
+            if not self.validate_token():
+                self.token_error.emit()
+                return
+
             total_tracks = len(self.tracks)
             failed_tracks = 0
             self.last_emitted_progress = 0
             self.total_processed = 0
             download_attempted = False
-            first_attempt = True
+
+            existing_files = self.scan_existing_files()
+            for track in existing_files:
+                self.skipped_tracks.append((track.title, track.artists))
+                
+            remaining_tracks = [t for t in self.tracks if t not in existing_files]
             
-            for i, track in enumerate(self.tracks):
+            for i, track in enumerate(remaining_tracks):
                 if self.is_stopped:
                     return
 
                 filepath = self.get_track_filepath(track)
-                
-                try:
-                    response = requests.get(
-                        f"https://api.spotifydown.com/download/{track.id}?token={self.token}", 
-                        headers=HEADERS,
-                        timeout=self.TIMEOUT
-                    )
-                    
-                    if response.status_code == 403 or (response.status_code == 200 and 'token' in response.text.lower()):
-                        self.is_stopped = True
-                        self.token_error.emit()
-                        return
-                        
-                except Exception as e:
-                    if '403' in str(e) or 'token' in str(e).lower():
-                        self.is_stopped = True
-                        self.token_error.emit()
-                        return
-
-                if os.path.exists(filepath):
-                    if self.remove_existing:
-                        try:
-                            os.remove(filepath)
-                        except Exception as e:
-                            self.failed_tracks.append((track.title, track.artists, f"Failed to remove existing file: {str(e)}"))
-                            self.progress.emit(
-                                f"Failed to remove existing file ({i+1}/{total_tracks}): {track.title} - {track.artists}", 
-                                self.calculate_progress(i+1, 0)
-                            )
-                            self.total_processed += 1
-                            continue
-                    else:
-                        self.skipped_tracks.append((track.title, track.artists))
-                        self.progress.emit(
-                            f"Skipped existing file ({i+1}/{total_tracks}): {track.title} - {track.artists}", 
-                            self.calculate_progress(i+1, 0)
-                        )
-                        self.total_processed += 1
-                        continue
-
                 download_attempted = True
                 retry_count = 0
                 success = False
@@ -291,28 +347,26 @@ class DownloadWorker(QThread):
                         
                         error_msg = handle_error_response(response)
                         if error_msg:
-                            if first_attempt and (response.status_code == 403 or "token" in error_msg.lower()):
-                                self.progress.emit("Token expired", 100)
-                                self.token_error.emit()
-                                return
                             raise Exception(error_msg)
 
-                        first_attempt = False
                         data = response.json()
-
-                        self.progress.emit("Downloading audio...", self.calculate_progress(i, 50))
+                        
+                        expected_size = self.get_file_size(data['link'])
+                        
+                        self.progress.emit(
+                            f"Downloading track {i+1}/{total_tracks}: {track.title}",
+                            self.calculate_progress(i, 50)
+                        )
                         last_progress = 50
-                        audio_response = requests.get(data['link'], timeout=self.TIMEOUT)
-                        if audio_response.status_code != 200:
-                            error_detail = f"Failed to download audio file - Status code: {audio_response.status_code}"
-                            if audio_response.text:
-                                error_detail += f" - Response: {audio_response.text}"
-                            raise Exception(error_detail)
-
+                        
+                        audio_content = self.download_with_progress(data['link'], expected_size)
+                        if audio_content is None:
+                            return
+                            
                         self.progress.emit("Saving file...", self.calculate_progress(i, 75))
                         last_progress = 75
                         with open(filepath, 'wb') as f:
-                            f.write(audio_response.content)
+                            f.write(audio_content)
                         
                         self.progress.emit(f"Adding metadata...", self.calculate_progress(i, 90))
                         last_progress = 90
@@ -329,6 +383,10 @@ class DownloadWorker(QThread):
                         retry_count += 1
                         error_msg = self.handle_download_error(e, track)
                         
+                        if '403' in str(e) or 'token' in str(e).lower():
+                            self.token_error.emit()
+                            return
+                            
                         if retry_count > self.MAX_RETRIES:
                             failed_tracks += 1
                             self.failed_tracks.append((track.title, track.artists, error_msg))
@@ -340,12 +398,8 @@ class DownloadWorker(QThread):
                             )
                             
                             if download_attempted and failed_tracks == total_tracks - len(self.skipped_tracks):
-                                if first_attempt:
-                                    self.progress.emit("All downloads failed", 100)
-                                    self.finished.emit(False, error_msg, self.failed_tracks)
-                                else:
-                                    self.progress.emit("Token expired", 100)
-                                    self.token_error.emit()
+                                self.progress.emit("All downloads failed", 100)
+                                self.finished.emit(False, error_msg, self.failed_tracks)
                                 return
                             break
                         else:
@@ -366,7 +420,6 @@ class DownloadWorker(QThread):
 
         except Exception as e:
             if '403' in str(e) or 'token' in str(e).lower():
-                self.is_stopped = True
                 self.token_error.emit()
             else:
                 self.progress.emit("Error occurred", 100)
@@ -489,7 +542,6 @@ class SpotifyDownGUI(QWidget):
         self.filename_format = self.settings.value('filename_format', 'title_artist')
         self.use_album_folder = self.settings.value('use_album_folder', False, type=bool)
         self.retry_count = self.settings.value('retry_count', 3, type=int)
-        self.remove_existing = self.settings.value('remove_existing', False, type=bool)
 
     def save_config(self):
         if all(hasattr(self, attr) and getattr(self, attr) is not None 
@@ -498,7 +550,6 @@ class SpotifyDownGUI(QWidget):
             self.settings.setValue('filename_format', 'artist_title' if self.artist_title_radio.isChecked() else 'title_artist')
             self.settings.setValue('use_album_folder', self.album_folder_check.isChecked())
             self.settings.setValue('retry_count', int(self.retry_dropdown.currentText()))
-            self.settings.setValue('remove_existing', self.remove_file_radio.isChecked())
             self.settings.sync()
 
     def save_format_settings(self):
@@ -854,32 +905,6 @@ class SpotifyDownGUI(QWidget):
         retry_layout.addStretch()
         download_layout.addLayout(retry_layout)
         
-        file_handling_layout = QHBoxLayout()
-        file_handling_label = QLabel('Existing File Handling:')
-        file_handling_label.setStyleSheet("color: palette(text);")
-        
-        self.file_handling_group = QButtonGroup(self)
-        self.skip_file_radio = QRadioButton('Skip Downloaded Files')
-        self.skip_file_radio.setStyleSheet("color: palette(text);")
-        self.skip_file_radio.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.skip_file_radio.toggled.connect(self.save_config)
-        
-        self.remove_file_radio = QRadioButton('Remove and Re-download Files')
-        self.remove_file_radio.setStyleSheet("color: palette(text);")
-        self.remove_file_radio.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.remove_file_radio.toggled.connect(self.save_config)
-        
-        self.skip_file_radio.setChecked(True)
-        
-        self.file_handling_group.addButton(self.skip_file_radio)
-        self.file_handling_group.addButton(self.remove_file_radio)
-        
-        file_handling_layout.addWidget(file_handling_label)
-        file_handling_layout.addWidget(self.skip_file_radio)
-        file_handling_layout.addWidget(self.remove_file_radio)
-        file_handling_layout.addStretch()
-        download_layout.addLayout(file_handling_layout)
-        
         settings_layout.addWidget(download_group)
         
         file_group = QWidget()
@@ -953,13 +978,11 @@ class SpotifyDownGUI(QWidget):
         self.title_artist_radio.setChecked(True)
         self.album_folder_check.setChecked(False)
         self.retry_dropdown.setCurrentText('3')
-        self.skip_file_radio.setChecked(True)
         
         self.settings.setValue('output_path', default_music_path)
         self.settings.setValue('filename_format', 'title_artist')
         self.settings.setValue('use_album_folder', False)
         self.settings.setValue('retry_count', 3)
-        self.settings.setValue('remove_existing', False)
         self.settings.sync()
         
         QMessageBox.information(self, "Success", "Settings have been reset to default values!")
@@ -1030,7 +1053,7 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v1.9 | December 2024")
+        footer_label = QLabel("v2.0 | January 2025")
         footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -1352,14 +1375,35 @@ class SpotifyDownGUI(QWidget):
             self.artist_title_radio.isChecked(),
             self.album_folder_check.isChecked(),
             int(self.retry_dropdown.currentText()),
-            self.remove_file_radio.isChecked()
         )
         self.worker.finished.connect(self.on_download_finished)
         self.worker.progress.connect(self.update_progress)
+        self.worker.detailed_progress.connect(self.update_detailed_progress)
         self.worker.token_error.connect(self.show_token_error)
         self.worker.start()
         self.start_timer()
         self.update_ui_for_download_start()
+
+    def update_detailed_progress(self, message, downloaded_size, total_size, speed):
+        if total_size > 0:
+            progress = (downloaded_size / total_size) * 100
+            downloaded_str = self.worker.format_size(downloaded_size)
+            total_str = self.worker.format_size(total_size)
+            speed_str = self.worker.format_speed(speed)
+            
+            progress_message = f"{message} : {progress:.1f}% | {downloaded_str}/{total_str} | Speed: {speed_str}"
+            self.log_output.moveCursor(QTextCursor.MoveOperation.End)
+            
+            cursor = self.log_output.textCursor()
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            cursor.select(QTextCursor.SelectionType.LineUnderCursor)
+            if cursor.selectedText().startswith("Downloading :"):
+                cursor.removeSelectedText()
+                if not cursor.atStart():
+                    cursor.deletePreviousChar()
+            self.log_output.append(progress_message)
+            
+            self.progress_bar.setValue(int(progress))
 
     def update_ui_for_download_start(self):
         self.download_selected_btn.setEnabled(False)
