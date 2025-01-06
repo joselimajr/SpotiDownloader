@@ -448,10 +448,10 @@ class DownloadWorker(QThread):
             audio.tags.add(TRCK(encoding=3, text=str(track.track_number)))
             audio.tags.add(
                 APIC(
-                    encoding=3,
+                    encoding=1,
                     mime='image/jpeg',
                     type=3,
-                    desc='Cover',
+                    desc=track.album,
                     data=cover_data
                 )
             )
