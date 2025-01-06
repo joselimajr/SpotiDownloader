@@ -108,7 +108,7 @@ def extract_album_metadata(album: PublicAlbum) -> Dict[str, Any]:
         
         return {
             'album_info': {
-                'cover': album_data['coverArt']['sources'][0]['url'],
+                'cover': album_data['coverArt']['sources'][2]['url'],
                 'title': clean_unicode_text(album_data['name']),
                 'owner': clean_unicode_text(album_data['artists']['items'][0]['profile']['name']),
                 'release': album_data['date']['isoString'].split('T')[0],
@@ -144,7 +144,7 @@ def extract_playlist_metadata(playlist: PublicPlaylist) -> Dict[str, Any]:
                             for artist in track_data['artists']['items']
                         ),
                         'album': clean_unicode_text(track_data['albumOfTrack']['name']),
-                        'cover': track_data['albumOfTrack']['coverArt']['sources'][0]['url'],
+                        'cover': track_data['albumOfTrack']['coverArt']['sources'][2]['url'],
                         'duration': format_duration(duration_ms)
                     })
                 except (UnicodeEncodeError, KeyError):
