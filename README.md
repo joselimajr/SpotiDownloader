@@ -7,6 +7,11 @@
 > [!IMPORTANT]  
 > Due to updates in the API, a token is required periodically. It seems that the token expiration period is around 10 minutes.
 
+> [!Note]
+> Requires **Google Chrome** to obtain the Token.
+> 
+> If the Cover Art does not appear, please install the **K-Lite Codec Pack.**
+
 ## Features
 
 - The ability to download more than `100 tracks` from a playlist  
@@ -16,13 +21,6 @@
 - Automatically obtaining the token
 - No Spotify account required
 - Light theme support
-  
-## Prerequisites
-
-| Program  | Function |
-| :-- | :-- |
-| Google Chrome <img src="./Archived/assets/chrome.svg" alt="Chrome" align=left width=24 height=24> | Obtaining the Token |
-| K-Lite Codec Pack <img src="./Archived/assets/k-lite.svg" alt="K-Lite Codec Pack" align=left width=24 height=24> | Display Cover Art on Windows |
 
 ## Screenshots
 
