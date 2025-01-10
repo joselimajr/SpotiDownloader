@@ -1,5 +1,7 @@
 [![GitHub All Releases](https://img.shields.io/github/downloads/afkarxyz/SpotifyDown-GUI/total?style=for-the-badge)](https://github.com/afkarxyz/SpotifyDown-GUI/releases)
 
+![SpotifyDown](https://github.com/user-attachments/assets/277195c6-de38-4f31-a41e-61fbc9df01d0)
+
 **SpotifyDown** is a GUI tool for downloading Spotify tracks, albums, and playlists using the API provided by spotifydown.com
 
 ### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.0/SpotifyDown.exe) SpotifyDown
