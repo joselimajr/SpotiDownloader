@@ -129,6 +129,7 @@ class DownloadWorker(QThread):
         self.current_download_start = 0
         self.last_downloaded = 0
         self.last_speed_update = 0
+        self.remaining_tracks = []
 
     def validate_token(self):
         try:
@@ -145,8 +146,10 @@ class DownloadWorker(QThread):
             return '403' not in str(e) and 'token' not in str(e).lower()
 
     def calculate_progress(self, track_index, sub_progress):
-        total_tracks = len(self.tracks)
-        progress = ((self.total_processed * 100) + sub_progress) / total_tracks
+        total_remaining = len(self.remaining_tracks)
+        if total_remaining == 0:
+            return 100
+        progress = ((track_index * 100) + sub_progress) / total_remaining
         new_progress = int(progress)
         
         if new_progress > self.last_emitted_progress:
@@ -171,10 +174,11 @@ class DownloadWorker(QThread):
 
     def scan_existing_files(self):
         existing_files = []
-        for track in self.tracks:
+        for idx, track in enumerate(self.tracks):
             filepath = self.get_track_filepath(track)
             if os.path.exists(filepath):
                 existing_files.append(track)
+                self.skipped_tracks.append((idx + 1, track.title, track.artists))
         return existing_files
 
     def simplify_error_message(self, error):
@@ -301,12 +305,25 @@ class DownloadWorker(QThread):
             download_attempted = False
 
             existing_files = self.scan_existing_files()
-            for track in existing_files:
-                self.skipped_tracks.append((track.title, track.artists))
-                
-            remaining_tracks = [t for t in self.tracks if t not in existing_files]
+            if existing_files:
+                skip_message = "Skipping existing files:"
+                for idx, title, artists in self.skipped_tracks:
+                    skip_message += f"\n{idx}. {title} - {artists}"
+                self.progress.emit(skip_message, 0)
+                self.msleep(1000)  # Give user time to read the message
             
-            for i, track in enumerate(remaining_tracks):
+            self.remaining_tracks = [t for t in self.tracks if t not in existing_files]
+            remaining_count = len(self.remaining_tracks)
+            
+            if remaining_count == 0:
+                self.progress.emit("All files already exist! Nothing to download.", 100)
+                self.finished.emit(True, "All files already exist", [])
+                return
+            
+            self.progress.emit(f"Starting download of {remaining_count} files out of {total_tracks} total tracks", 0)
+            self.msleep(1000)
+
+            for i, track in enumerate(self.remaining_tracks):
                 if self.is_stopped:
                     return
 
@@ -331,7 +348,7 @@ class DownloadWorker(QThread):
                             self.msleep(1000)
                         else:
                             self.progress.emit(
-                                f"Starting download ({i+1}/{total_tracks}): {track.title} - {track.artists}", 
+                                f"Starting download ({i+1}/{remaining_count}): {track.title} - {track.artists}", 
                                 self.calculate_progress(i, last_progress)
                             )
                             self.msleep(500)
@@ -372,13 +389,14 @@ class DownloadWorker(QThread):
                         last_progress = 90
                         self.add_metadata(filepath, track)
 
+                        progress = ((i + 1) * 100) // remaining_count
                         self.progress.emit(
                             f"Successfully downloaded: {track.title}", 
-                            self.calculate_progress(i, 100)
+                            progress
                         )
                         success = True
                         self.total_processed += 1
-                        
+
                     except Exception as e:
                         retry_count += 1
                         error_msg = self.handle_download_error(e, track)
@@ -408,6 +426,7 @@ class DownloadWorker(QThread):
                                 self.calculate_progress(i, last_progress)
                             )
                             self.msleep(1000)
+                        pass
 
             if not self.is_stopped:
                 self.progress.emit("Finalizing...", 100)
@@ -424,7 +443,8 @@ class DownloadWorker(QThread):
             else:
                 self.progress.emit("Error occurred", 100)
                 self.finished.emit(False, self.simplify_error_message(e), self.failed_tracks)
-
+            pass
+        
     def add_metadata(self, filepath: str, track: Track):
         try:
             cover_response = requests.get(track.cover_url, timeout=self.TIMEOUT)
@@ -1053,7 +1073,7 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v2.0 | January 2025")
+        footer_label = QLabel("v2.1 | January 2025")
         footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -1402,8 +1422,6 @@ class SpotifyDownGUI(QWidget):
                 if not cursor.atStart():
                     cursor.deletePreviousChar()
             self.log_output.append(progress_message)
-            
-            self.progress_bar.setValue(int(progress))
 
     def update_ui_for_download_start(self):
         self.download_selected_btn.setEnabled(False)
