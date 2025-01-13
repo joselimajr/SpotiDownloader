@@ -204,91 +204,102 @@ class DownloadWorker(QThread):
         return report_error
 
     def format_size(self, size_bytes):
-        for unit in ['B', 'KB', 'MB', 'GB']:
-            if size_bytes < 1024:
-                return f"{size_bytes:.2f}{unit}"
+        units = ['B', 'KB', 'MB', 'GB']
+        index = 0
+        while size_bytes >= 1024 and index < len(units) - 1:
             size_bytes /= 1024
-        return f"{size_bytes:.2f}GB"
+            index += 1
+        return f"{size_bytes:.2f}{units[index]}"
 
     def format_speed(self, speed_bytes):
-        speed_mbps = (speed_bytes * 8) / (1024 * 1024)
-        return f"{speed_mbps:.2f}Mbps"
+        speed_bits = speed_bytes * 8
+        
+        if speed_bits >= 1024 * 1024:
+            speed_mbps = speed_bits / (1024 * 1024)
+            return f"{speed_mbps:.2f}Mbps"
+        else:
+            speed_kbps = speed_bits / 1024
+            return f"{speed_kbps:.2f}Kbps"
     
     def get_file_size(self, url):
-        try:
-            response = requests.head(url, timeout=self.TIMEOUT)
-            size = int(response.headers.get('content-length', 0))
-            
-            if size <= 0:
-                response = requests.get(url, stream=True, timeout=self.TIMEOUT)
-                size = int(response.headers.get('content-length', 0))
-                response.close()
-                
-            if size <= 0:
-                return 0
-                
-            return size
-        except Exception as e:
-            return 0
+        response = requests.head(url, timeout=self.TIMEOUT)
+        return int(response.headers.get('content-length', 0))
 
     def download_with_progress(self, url, expected_size):
-        try:
-            response = requests.get(url, stream=True, timeout=self.TIMEOUT)
-            response.raise_for_status()
-            
-            self.current_download_start = time.time()
-            self.last_downloaded = 0
-            self.last_speed_update = self.current_download_start
-            
-            downloaded_size = 0
-            chunk_size = 8192
-            chunks = []
+        response = requests.get(url, stream=True, timeout=self.TIMEOUT)
+        response.raise_for_status()
+        
+        self.current_download_start = time.time()
+        self.last_downloaded = 0
+        self.last_speed_update = self.current_download_start
+        
+        downloaded_size = 0
+        chunk_size = 8192
+        chunks = []
+        
+        has_content_length = 'content-length' in response.headers
+        if has_content_length:
+            total_size = int(response.headers['content-length'])
+        else:
+            total_size = None
 
-            for chunk in response.iter_content(chunk_size=chunk_size):
+        for chunk in response.iter_content(chunk_size=chunk_size):
+            if self.is_stopped:
+                return None
+                
+            while self.is_paused:
                 if self.is_stopped:
                     return None
+                self.msleep(100)
+                self.current_download_start = time.time()
+                
+            if chunk:
+                chunks.append(chunk)
+                downloaded_size += len(chunk)
+                current_time = time.time()
+                time_diff = current_time - self.last_speed_update
+                
+                if time_diff >= 0.5 or (total_size and downloaded_size >= total_size):
+                    speed = (downloaded_size - self.last_downloaded) / time_diff
                     
-                while self.is_paused:
-                    if self.is_stopped:
-                        return None
-                    self.msleep(100)
-                    self.current_download_start = time.time()
-                    
-                if chunk:
-                    chunks.append(chunk)
-                    downloaded_size += len(chunk)
-                    current_time = time.time()
-                    time_diff = current_time - self.last_speed_update
-                    
-                    if time_diff >= 0.5:
-                        try:
-                            speed = (downloaded_size - self.last_downloaded) / max(time_diff, 0.1)
-                        except:
-                            speed = 0
-                            
+                    if total_size:
                         self.detailed_progress.emit(
                             "Downloading",
                             downloaded_size,
-                            max(expected_size, downloaded_size),
+                            total_size,
                             speed
                         )
-                        self.last_downloaded = downloaded_size
-                        self.last_speed_update = current_time
+                    else:
+                        downloaded_str = self.format_size(downloaded_size)
+                        speed_str = self.format_speed(speed)
+                        self.detailed_progress.emit(
+                            f"Downloading : {downloaded_str} | Speed: {speed_str}",
+                            downloaded_size,
+                            -1,
+                            speed
+                        )
+                        
+                    self.last_downloaded = downloaded_size
+                    self.last_speed_update = current_time
 
-            if downloaded_size > 0:
+        if downloaded_size > self.last_downloaded:
+            if total_size:
                 self.detailed_progress.emit(
                     "Downloading",
                     downloaded_size,
+                    total_size,
+                    0
+                )
+            else:
+                downloaded_str = self.format_size(downloaded_size)
+                self.detailed_progress.emit(
+                    f"Downloading : {downloaded_str} | Speed: 0Mbps",
                     downloaded_size,
+                    -1,
                     0
                 )
 
-            return b''.join(chunks)
-            
-        except requests.exceptions.RequestException as e:
-            raise Exception(f"Download failed: {str(e)}")
-        except Exception as e:
-            raise Exception(f"Download failed: {str(e)}")
+        return b''.join(chunks)
 
     def run(self):
         try:
@@ -354,13 +365,10 @@ class DownloadWorker(QThread):
                         if not download_url:
                             raise Exception("Failed to get download URL")
                         
-                        try:
-                            expected_size = self.get_file_size(download_url)
-                        except:
-                            expected_size = 0
+                        expected_size = self.get_file_size(download_url)
                         
                         self.progress.emit(
-                            f"Downloading track {i+1}/{remaining_count}: {track.title}",
+                            f"Downloading track {i+1}/{total_tracks}: {track.title}",
                             self.calculate_progress(i, 50)
                         )
                         last_progress = 50
@@ -410,8 +418,8 @@ class DownloadWorker(QThread):
                                 f"Error: {error_msg}. Retry attempt {retry_count} of {self.MAX_RETRIES}...", 
                                 self.calculate_progress(i, last_progress)
                             )
-                            self.msleep(2000)
-                        continue
+                            self.msleep(1000)
+                        pass
 
             if not self.is_stopped:
                 self.progress.emit("Finalizing...", 100)
@@ -425,6 +433,7 @@ class DownloadWorker(QThread):
         except Exception as e:
             self.progress.emit("Error occurred", 100)
             self.finished.emit(False, self.simplify_error_message(e), self.failed_tracks)
+            pass
         
     def add_metadata(self, filepath: str, track: Track):
         try:
@@ -1001,7 +1010,7 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v2.2 | January 2025")
+        footer_label = QLabel("v2.3 | January 2025")
         footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -1308,18 +1317,20 @@ class SpotifyDownGUI(QWidget):
             downloaded_str = self.worker.format_size(downloaded_size)
             total_str = self.worker.format_size(total_size)
             speed_str = self.worker.format_speed(speed)
-            
             progress_message = f"{message} : {progress:.1f}% | {downloaded_str}/{total_str} | Speed: {speed_str}"
-            self.log_output.moveCursor(QTextCursor.MoveOperation.End)
+        else:
+            progress_message = message
             
-            cursor = self.log_output.textCursor()
-            cursor.movePosition(QTextCursor.MoveOperation.End)
-            cursor.select(QTextCursor.SelectionType.LineUnderCursor)
-            if cursor.selectedText().startswith("Downloading :"):
-                cursor.removeSelectedText()
-                if not cursor.atStart():
-                    cursor.deletePreviousChar()
-            self.log_output.append(progress_message)
+        self.log_output.moveCursor(QTextCursor.MoveOperation.End)
+        
+        cursor = self.log_output.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        cursor.select(QTextCursor.SelectionType.LineUnderCursor)
+        if cursor.selectedText().startswith("Downloading :"):
+            cursor.removeSelectedText()
+            if not cursor.atStart():
+                cursor.deletePreviousChar()
+        self.log_output.append(progress_message)
 
     def update_ui_for_download_start(self):
         self.download_selected_btn.setEnabled(False)
