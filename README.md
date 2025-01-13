@@ -4,7 +4,10 @@
 
 **SpotifyDown** is a GUI tool for downloading Spotify tracks, albums, and playlists using the API provided by spotifydown.com
 
-### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.2/SpotifyDown.exe) SpotifyDown
+| Version   | Download |
+| :--: | :-- |
+| **v2.1** | [Requires Token](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.1/SpotifyDown.exe) |
+| **v2.2** | [No Token Required](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.2/SpotifyDown.exe) |
 
 ## Features
 
