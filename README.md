@@ -11,7 +11,8 @@
 | [v2.1](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.1/SpotifyDown.exe) | Requires Token |
 | [v2.2](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.2/SpotifyDown.exe) | No Token Required |
 
-> If you encounter errors with the version that doesn't require a token, please switch back to **v2.1**
+> - If you encounter errors with the version that doesn't require a token, please switch back to **v2.1**
+> - The token is valid for about 10 minutes.
 
 ## Features
 
