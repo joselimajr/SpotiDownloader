@@ -4,15 +4,7 @@
 
 **SpotifyDown** is a GUI tool for downloading Spotify tracks, albums, and playlists using the API provided by spotifydown.com
 
-### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.1/SpotifyDown.exe) SpotifyDown
-
-> [!IMPORTANT]  
-> Due to updates in the API, a token is required periodically. It seems that the token expiration period is around 10 minutes.
-
-> [!Note]
-> Requires **Google Chrome** to obtain the Token.
-> 
-> If the Cover Art does not appear, please install the **K-Lite Codec Pack.**
+### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.2/SpotifyDown.exe) SpotifyDown
 
 ## Features
 
@@ -20,18 +12,17 @@
 - The ability to download more than `50 tracks` from an album
 - Download individual tracks, entire albums, or playlists
 - High-quality audio download at `320 kbps`
-- Automatically obtaining the token
 - No Spotify account required
 - Light theme support
 
 ## Screenshots
 
-![image](https://github.com/user-attachments/assets/3be62536-13b2-4cae-aa69-a547c54cbf55)
+![image](https://github.com/user-attachments/assets/333953da-c3c9-48a3-895d-1f1bb6c74e88)
 
-![image](https://github.com/user-attachments/assets/f6af9159-5805-47f6-81d6-02f0133e4d9c)
+![image](https://github.com/user-attachments/assets/0a70d82a-73bf-4350-9898-7389bde8e952)
 
-![image](https://github.com/user-attachments/assets/6a6f5183-536c-43ec-bc03-e93d29568d5c)
+![image](https://github.com/user-attachments/assets/67c1cec4-25e6-4d44-99c6-b60ded9c796c)
 
-![image](https://github.com/user-attachments/assets/0d1c3b97-38f1-4b39-ad00-6a599cb26fc8)
+![image](https://github.com/user-attachments/assets/ff43a82f-2b1e-4d77-bfc2-fcb4c4f08bb9)
 
-![image](https://github.com/user-attachments/assets/d670ac67-f251-4c00-9e81-e2173ee8a980)
+![image](https://github.com/user-attachments/assets/9321e98c-300d-4483-8863-dc828cb2319e)
