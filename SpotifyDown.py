@@ -39,6 +39,8 @@ def handle_error_response(response):
     if isinstance(response, str):
         return response
         
+    if response is None:
+        return "Error: No response received"
     if response.status_code == 400:
         return "Error: Invalid request. Please try again"
     elif response.status_code == 429:
@@ -1010,7 +1012,7 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v2.3 | January 2025")
+        footer_label = QLabel("v2.4 | January 2025")
         footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
