@@ -4,12 +4,18 @@
 
 **SpotifyDown** is a GUI tool for downloading Spotify tracks, albums, and playlists using the API provided by spotifydown.com
 
-### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.5/SpotifyDown.exe) SpotifyDown
+## Download
 
-> [!IMPORTANT]  
-> Due to updates in the API, a token is required periodically. It seems that the token expiration period is around 10 minutes.
+> [!Warning]  
+> - Due to updates in the API, a token is required periodically. It seems that the token expiration period is around 10 minutes.
+> - If you're experiencing issues with **v2.4** which doesn't require a token, please update to the **latest version** that does require a token.
 
-> [!Note]
+| Version   | Token Requirement | Status |
+| :--: | :--: | :--: | 
+| [v2.4](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.4/SpotifyDown.exe) | No | Experimental
+| [v2.5](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.5/SpotifyDown.exe) | Yes | Maintained
+
+> [!Important]
 > - Requires **Google Chrome** to obtain the Token.
 > - If the Cover Art does not appear, please install the **K-Lite Codec Pack.**
 
