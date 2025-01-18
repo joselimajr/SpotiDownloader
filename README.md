@@ -10,10 +10,10 @@
 > - Due to updates in the API, a token is required periodically. It seems that the token expiration period is around 10 minutes.
 > - If you're experiencing issues with **v2.4** which doesn't require a token, please update to the **latest version** that does require a token.
 
-| Version   | Token Requirement | Status |
-| :--: | :--: | :--: | 
-| [v2.4](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.4/SpotifyDown.exe) | No | Experimental
-| [v2.6](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.6/SpotifyDown.exe) | Yes | Maintained
+| Version   | Release Date | Token Requirement | Status |
+| :--: | :--: | :--: | :--: | 
+| [v2.4](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.4/SpotifyDown.exe) | 14-01-2025 | No | Experimental
+| [v2.6](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.6/SpotifyDown.exe) | 18-01-2025 | Yes | Maintained
 
 > [!Important]
 > - Requires **Google Chrome** to obtain the Token.
