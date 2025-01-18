@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 import requests
 import re
+import asyncio
 
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit,
@@ -17,9 +18,16 @@ from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 from mutagen.mp3 import MP3
-from mutagen.id3 import APIC, TIT2, TPE1, TALB, TRCK, error
+from mutagen.id3 import APIC, TIT2, TPE1, TALB, TDRC, TSRC, COMM, error
 
 from GetMetadata import get_track_metadata, get_album_metadata, get_playlist_metadata, extract_spotify_id
+from GetToken import main as get_token
+
+HEADERS = {
+    'Host': 'api.spotifydown.com',
+    'Referer': 'https://spotifydown.com/',
+    'Origin': 'https://spotifydown.com',
+}
 
 def format_artists(artists_string):
     artists = [a.strip() for a in re.split(r'[,&]', artists_string) if a.strip()]
@@ -34,6 +42,8 @@ class Track:
     cover_url: str
     track_number: int
     duration: str
+    release_date: str
+    isrc: str 
 
 def handle_error_response(response):
     if isinstance(response, str):
@@ -41,8 +51,21 @@ def handle_error_response(response):
         
     if response is None:
         return "Error: No response received"
+        
+    if not hasattr(response, 'status_code'):
+        return "Error: Invalid response format"
+    
     if response.status_code == 400:
+        try:
+            error_data = response.json()
+            error_msg = error_data.get('error', '').lower()
+            if 'header' in error_msg:
+                return "Error: Invalid request. Please try downloading directly from spotifydown.com or try again later"
+        except:
+            pass
         return "Error: Invalid request. Please try again"
+    elif response.status_code == 403:
+        return "Error: Token has expired. Please update your token"
     elif response.status_code == 429:
         return "Error: Too many requests. Please try again later"
     elif response.status_code == 500:
@@ -55,8 +78,12 @@ def handle_error_response(response):
         if not data.get('success'):
             error_msg = data.get('error', 'Unknown error').lower()
             
-            if 'timeout' in error_msg or 'timed out' in error_msg:
+            if 'header' in error_msg:
+                return "Error: Invalid request. Please try downloading directly from spotifydown.com or try again later"
+            elif 'timeout' in error_msg or 'timed out' in error_msg:
                 return "Error: Connection timed out. Please try again"
+            elif 'token' in error_msg:
+                return "Error: Token has expired. Please update your token"
             elif 'rate limit' in error_msg:
                 return "Error: Too many requests. Please try again later"
             elif 'connection' in error_msg:
@@ -84,13 +111,15 @@ class DownloadWorker(QThread):
     finished = pyqtSignal(bool, str, list)
     progress = pyqtSignal(str, int)
     detailed_progress = pyqtSignal(str, float, float, float)
+    token_error = pyqtSignal()
     
-    def __init__(self, tracks, outpath, is_single_track=False, is_album=False, is_playlist=False, 
+    def __init__(self, tracks, outpath, token, is_single_track=False, is_album=False, is_playlist=False, 
                  album_or_playlist_name='', artist_title_radio=False, album_folder_check=False, 
                  max_retries=3):
         super().__init__()
         self.tracks = tracks
         self.outpath = outpath
+        self.token = token
         self.is_single_track = is_single_track
         self.is_album = is_album
         self.is_playlist = is_playlist
@@ -110,21 +139,19 @@ class DownloadWorker(QThread):
         self.last_speed_update = 0
         self.remaining_tracks = []
 
-    def get_download_url(self, track_id):
-        url = "https://spotifydownloader.pro/"
-        payload = {'url': f'https://open.spotify.com/track/{track_id}'}
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
+    def validate_token(self):
         try:
-            response = requests.post(url, data=payload, headers=headers)
-            response.raise_for_status()
-            match = re.search(r'<a class="rb_btn" href="(.*?)"', response.text)
-            if match:
-                return match.group(1)
+            if not self.tracks:
+                return True
+                
+            response = requests.get(
+                f"https://api.spotifydown.com/download/{self.tracks[0].id}?token={self.token}",
+                headers=HEADERS,
+                timeout=self.TIMEOUT
+            )
+            return not (response.status_code == 403 or 'token' in response.text.lower())
         except Exception as e:
-            raise Exception(f"Failed to get download URL: {str(e)}")
-        return None
+            return '403' not in str(e) and 'token' not in str(e).lower()
 
     def calculate_progress(self, track_index, sub_progress):
         total_remaining = len(self.remaining_tracks)
@@ -167,8 +194,12 @@ class DownloadWorker(QThread):
         
         if 'timeout' in error_str or 'timed out' in error_str:
             return "Connection timed out"
+        if 'missing required request header' in error_str or 'header' in error_str:
+            return "Invalid request. Please try downloading directly from spotifydown.com or try again later"
         if 'status code: 400' in error_str:
             return "Invalid request"
+        if 'status code: 403' in error_str:
+            return "Token expired"
         if 'status code: 429' in error_str:
             return "Too many requests"
         if 'status code: 500' in error_str:
@@ -182,11 +213,11 @@ class DownloadWorker(QThread):
         simplified_error = self.simplify_error_message(error)
         
         all_invalid_headers = (len(self.failed_tracks) > 0 and 
-            all('invalid request' in err[2].lower() 
+            all('header' in err[2].lower() or 'invalid request' in err[2].lower() 
                 for err in self.failed_tracks))
         
-        if 'invalid request' in simplified_error.lower() and all_invalid_headers:
-            return "Invalid request. Please try again later"
+        if ('header' in simplified_error.lower() or 'invalid request' in simplified_error.lower()) and all_invalid_headers:
+            return "Invalid request. Please try downloading directly from spotifydown.com or try again later"
         
         report_error = simplified_error
         
@@ -197,10 +228,10 @@ class DownloadWorker(QThread):
         elif isinstance(error, requests.exceptions.RequestException):
             if hasattr(error, 'response'):
                 error_response = handle_error_response(error.response)
-                if error_response:
+                if error_response and '403' not in error_response:
                     return f"Download failed: {error_response}"
         
-        if self.is_single_track:
+        if self.is_single_track and '403' not in report_error:
             return f"Download failed: {report_error}"
         
         return report_error
@@ -238,12 +269,6 @@ class DownloadWorker(QThread):
         downloaded_size = 0
         chunk_size = 8192
         chunks = []
-        
-        has_content_length = 'content-length' in response.headers
-        if has_content_length:
-            total_size = int(response.headers['content-length'])
-        else:
-            total_size = None
 
         for chunk in response.iter_content(chunk_size=chunk_size):
             if self.is_stopped:
@@ -261,50 +286,33 @@ class DownloadWorker(QThread):
                 current_time = time.time()
                 time_diff = current_time - self.last_speed_update
                 
-                if time_diff >= 0.5 or (total_size and downloaded_size >= total_size):
+                if time_diff >= 0.5 or downloaded_size >= expected_size:
                     speed = (downloaded_size - self.last_downloaded) / time_diff
-                    
-                    if total_size:
-                        self.detailed_progress.emit(
-                            "Downloading",
-                            downloaded_size,
-                            total_size,
-                            speed
-                        )
-                    else:
-                        downloaded_str = self.format_size(downloaded_size)
-                        speed_str = self.format_speed(speed)
-                        self.detailed_progress.emit(
-                            f"Downloading : {downloaded_str} | Speed: {speed_str}",
-                            downloaded_size,
-                            -1,
-                            speed
-                        )
-                        
+                    self.detailed_progress.emit(
+                        f"Downloading",
+                        downloaded_size,
+                        expected_size,
+                        speed
+                    )
                     self.last_downloaded = downloaded_size
                     self.last_speed_update = current_time
 
         if downloaded_size > self.last_downloaded:
-            if total_size:
-                self.detailed_progress.emit(
-                    "Downloading",
-                    downloaded_size,
-                    total_size,
-                    0
-                )
-            else:
-                downloaded_str = self.format_size(downloaded_size)
-                self.detailed_progress.emit(
-                    f"Downloading : {downloaded_str} | Speed: 0Mbps",
-                    downloaded_size,
-                    -1,
-                    0
-                )
+            self.detailed_progress.emit(
+                f"Downloading",
+                downloaded_size,
+                expected_size,
+                0
+            )
 
         return b''.join(chunks)
 
     def run(self):
         try:
+            if not self.validate_token():
+                self.token_error.emit()
+                return
+
             total_tracks = len(self.tracks)
             failed_tracks = 0
             self.last_emitted_progress = 0
@@ -363,11 +371,19 @@ class DownloadWorker(QThread):
                         self.progress.emit("Getting download link...", self.calculate_progress(i, 25))
                         last_progress = 25
                         
-                        download_url = self.get_download_url(track.id)
-                        if not download_url:
-                            raise Exception("Failed to get download URL")
+                        response = requests.get(
+                            f"https://api.spotifydown.com/download/{track.id}?token={self.token}", 
+                            headers=HEADERS,
+                            timeout=self.TIMEOUT
+                        )
                         
-                        expected_size = self.get_file_size(download_url)
+                        error_msg = handle_error_response(response)
+                        if error_msg:
+                            raise Exception(error_msg)
+
+                        data = response.json()
+                        
+                        expected_size = self.get_file_size(data['link'])
                         
                         self.progress.emit(
                             f"Downloading track {i+1}/{total_tracks}: {track.title}",
@@ -375,7 +391,7 @@ class DownloadWorker(QThread):
                         )
                         last_progress = 50
                         
-                        audio_content = self.download_with_progress(download_url, expected_size)
+                        audio_content = self.download_with_progress(data['link'], expected_size)
                         if audio_content is None:
                             return
                             
@@ -399,6 +415,10 @@ class DownloadWorker(QThread):
                     except Exception as e:
                         retry_count += 1
                         error_msg = self.handle_download_error(e, track)
+                        
+                        if '403' in str(e) or 'token' in str(e).lower():
+                            self.token_error.emit()
+                            return
                             
                         if retry_count > self.MAX_RETRIES:
                             failed_tracks += 1
@@ -433,8 +453,11 @@ class DownloadWorker(QThread):
                     self.finished.emit(True, partial_success_message, self.failed_tracks)
 
         except Exception as e:
-            self.progress.emit("Error occurred", 100)
-            self.finished.emit(False, self.simplify_error_message(e), self.failed_tracks)
+            if '403' in str(e) or 'token' in str(e).lower():
+                self.token_error.emit()
+            else:
+                self.progress.emit("Error occurred", 100)
+                self.finished.emit(False, self.simplify_error_message(e), self.failed_tracks)
             pass
         
     def add_metadata(self, filepath: str, track: Track):
@@ -457,13 +480,26 @@ class DownloadWorker(QThread):
             audio.tags.add(TIT2(encoding=3, text=track.title))
             audio.tags.add(TPE1(encoding=3, text=formatted_artists))
             audio.tags.add(TALB(encoding=3, text=track.album))
-            audio.tags.add(TRCK(encoding=3, text=str(track.track_number)))
+            
+            if track.release_date:
+                audio.tags.add(TDRC(encoding=3, text=track.release_date))
+                
+            if track.isrc:
+                audio.tags.add(TSRC(encoding=3, text=track.isrc))
+                
+            audio.tags.add(COMM(
+                encoding=3,
+                lang='eng',
+                desc='',
+                text='github.com/afkarxyz/SpotifyDown-GUI'
+            ))
+            
             audio.tags.add(
                 APIC(
                     encoding=1,
                     mime='image/jpeg',
                     type=3,
-                    desc=track.album,
+                    desc='',
                     data=cover_data
                 )
             )
@@ -499,11 +535,13 @@ class SpotifyDownGUI(QWidget):
         self.network_manager = QNetworkAccessManager()
         self.network_manager.finished.connect(self.on_cover_loaded)
         
+        self.token_input = None
         self.output_dir = None
         self.artist_title_radio = None
         self.album_folder_check = None
         self.retry_dropdown = None
         
+        self.last_token = ''
         self.last_output_path = os.path.expanduser("~\\Music")
         self.filename_format = 'title_artist'
         self.use_album_folder = False
@@ -512,6 +550,9 @@ class SpotifyDownGUI(QWidget):
         self.load_config()
         
         self.initUI()
+        
+        if hasattr(self, 'last_token') and self.token_input:
+            self.token_input.setText(self.last_token)
 
     def reset_state(self):
         self.tracks.clear()
@@ -544,6 +585,7 @@ class SpotifyDownGUI(QWidget):
             return os.path.dirname(os.path.abspath(__file__))
 
     def load_config(self):
+        self.last_token = self.settings.value('token', '')
         self.last_output_path = self.settings.value('output_path', os.path.expanduser("~\\Music"))
         self.filename_format = self.settings.value('filename_format', 'title_artist')
         self.use_album_folder = self.settings.value('use_album_folder', False, type=bool)
@@ -565,7 +607,7 @@ class SpotifyDownGUI(QWidget):
     def initUI(self):
         self.setWindowTitle('SpotifyDown')
         self.setFixedWidth(650)
-        self.setFixedHeight(400)
+        self.setFixedHeight(410)
         
         icon_path = os.path.join(os.path.dirname(__file__), "icon.svg")
         if os.path.exists(icon_path):
@@ -574,6 +616,7 @@ class SpotifyDownGUI(QWidget):
         self.main_layout = QVBoxLayout()
         
         self.setup_spotify_section()
+        self.setup_token_section()
         self.setup_tabs()
         
         self.setLayout(self.main_layout)
@@ -603,6 +646,52 @@ class SpotifyDownGUI(QWidget):
         spotify_layout.addWidget(self.fetch_btn)
         self.main_layout.addLayout(spotify_layout)
 
+    def setup_token_section(self):
+        token_layout = QHBoxLayout()
+        token_label = QLabel('Token:')
+        token_label.setFixedWidth(100)
+        
+        self.token_input = QLineEdit()
+        self.token_input.setPlaceholderText("Please enter the Token")
+        self.token_input.setClearButtonEnabled(True)
+        self.token_input.textChanged.connect(self.handle_token_clear)
+        
+        self.token_save_icon_btn = QPushButton()
+        self.token_save_btn = QPushButton('Get Token')
+        
+        self.setup_button(self.token_save_icon_btn, "save.svg", "Save Token", self.save_token)
+        
+        self.token_save_icon_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.token_save_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        
+        self.token_save_btn.clicked.connect(self.get_token)
+        
+        token_layout.addWidget(token_label)
+        token_layout.addWidget(self.token_input)
+        token_layout.addWidget(self.token_save_icon_btn)
+        token_layout.addWidget(self.token_save_btn)
+        self.main_layout.addLayout(token_layout)
+
+    async def _fetch_token(self):
+        try:
+            token = await get_token()
+            if token:
+                self.token_input.setText(token)
+                QMessageBox.information(self, "Success", "Token fetched successfully!")
+            else:
+                QMessageBox.warning(self, "Error", "Failed to fetch token")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to fetch token: {str(e)}")
+
+    def get_token(self):
+        asyncio.run(self._fetch_token())
+        
+    def handle_token_clear(self, text):
+        if not text:
+            self.settings.remove('token')
+            self.settings.sync()
+            self.last_token = ''
+            
     def setup_output_section(self):
         output_layout = QHBoxLayout()
         output_label = QLabel('Output Directory:')
@@ -1012,7 +1101,7 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v2.4 | January 2025")
+        footer_label = QLabel("v2.5 | January 2025")
         footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -1045,10 +1134,34 @@ class SpotifyDownGUI(QWidget):
         clipboard = QApplication.clipboard()
         self.spotify_url.setText(clipboard.text().strip())
 
+    def paste_token(self):
+        clipboard = QApplication.clipboard()
+        self.token_input.setText(clipboard.text().strip())
+
     def browse_output(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Output Directory")
         if directory:
             self.output_dir.setText(directory)
+
+    def save_token(self):
+        token = self.token_input.text().strip()
+        if token:
+            self.settings.setValue('token', token)
+            self.settings.sync()
+            QMessageBox.information(self, "Success", "Token saved successfully!")
+        else:
+            QMessageBox.warning(self, "Warning", "Please enter a token before saving.")
+
+    def show_token_error(self):
+        QMessageBox.warning(self, "Error", "Token has expired. Please update your token.")
+        self.stop_download(is_token_error=True)
+        self.download_selected_btn.setEnabled(True)
+        self.download_all_btn.setEnabled(True)
+        self.progress_bar.hide()
+        self.stop_btn.hide()
+        self.pause_resume_btn.hide()
+        self.pause_resume_btn.setText('Pause')
+        self.stop_timer()
 
     def open_output_dir(self):
         path = self.output_dir.text()
@@ -1081,7 +1194,10 @@ class SpotifyDownGUI(QWidget):
     def fetch_single_track(self, url):
         track_id = extract_spotify_id(url)
         try:
-            metadata = get_track_metadata(track_id)
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            metadata = loop.run_until_complete(get_track_metadata(track_id))
+            loop.close()
             
             formatted_artists = format_artists(metadata['artist'])
             
@@ -1092,7 +1208,9 @@ class SpotifyDownGUI(QWidget):
                 album=metadata['album'],
                 cover_url=metadata['cover'],
                 track_number=1,
-                duration=metadata.get('duration', '0:00')
+                duration=metadata.get('duration', '0:00'),
+                release_date=metadata.get('release', ''),
+                isrc=metadata.get('isrc', '')   
             )]
             self.is_single_track = True
             self.is_album = self.is_playlist = False
@@ -1108,20 +1226,26 @@ class SpotifyDownGUI(QWidget):
         item_id = extract_spotify_id(url)
         
         try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
             if '/album/' in url:
-                metadata = get_album_metadata(item_id)
+                metadata = loop.run_until_complete(get_album_metadata(item_id))
                 self.is_album = True
                 self.is_playlist = False
                 self.album_or_playlist_name = metadata['album_info']['title']
                 tracks_data = metadata['track_list']
             elif '/playlist/' in url:
-                metadata = get_playlist_metadata(item_id)
+                metadata = loop.run_until_complete(get_playlist_metadata(item_id))
                 self.is_album = False
                 self.is_playlist = True
                 self.album_or_playlist_name = metadata['playlist_info']['title']
                 tracks_data = metadata['track_list']
             else:
+                loop.close()
                 raise ValueError("Invalid URL: must be an album or playlist")
+                
+            loop.close()
 
             self.tracks = []
             for i, track in enumerate(tracks_data, 1):
@@ -1136,7 +1260,9 @@ class SpotifyDownGUI(QWidget):
                     album=album_name,
                     cover_url=track.get('cover', metadata['album_info']['cover'] if self.is_album else metadata['playlist_info']['cover']),
                     track_number=i,
-                    duration=track.get('duration', '0:00')
+                    duration=track.get('duration', '0:00'),
+                    release_date=track.get('release', ''),
+                    isrc=track.get('isrc', '')  
                 ))
 
             self.is_single_track = False
@@ -1282,6 +1408,10 @@ class SpotifyDownGUI(QWidget):
             QMessageBox.warning(self, 'Warning', 'Invalid output directory.')
             return
 
+        if not self.token_input.text().strip():
+            QMessageBox.warning(self, "Error", "Please enter a token")
+            return
+
         tracks_to_download = self.tracks if self.is_single_track else [self.tracks[i] for i in indices]
 
         if self.is_album or self.is_playlist:
@@ -1298,6 +1428,7 @@ class SpotifyDownGUI(QWidget):
         self.worker = DownloadWorker(
             tracks_to_download, 
             outpath, 
+            self.token_input.text().strip(),
             self.is_single_track, 
             self.is_album, 
             self.is_playlist, 
@@ -1309,6 +1440,7 @@ class SpotifyDownGUI(QWidget):
         self.worker.finished.connect(self.on_download_finished)
         self.worker.progress.connect(self.update_progress)
         self.worker.detailed_progress.connect(self.update_detailed_progress)
+        self.worker.token_error.connect(self.show_token_error)
         self.worker.start()
         self.start_timer()
         self.update_ui_for_download_start()
@@ -1319,20 +1451,18 @@ class SpotifyDownGUI(QWidget):
             downloaded_str = self.worker.format_size(downloaded_size)
             total_str = self.worker.format_size(total_size)
             speed_str = self.worker.format_speed(speed)
-            progress_message = f"{message} : {progress:.1f}% | {downloaded_str}/{total_str} | Speed: {speed_str}"
-        else:
-            progress_message = message
             
-        self.log_output.moveCursor(QTextCursor.MoveOperation.End)
-        
-        cursor = self.log_output.textCursor()
-        cursor.movePosition(QTextCursor.MoveOperation.End)
-        cursor.select(QTextCursor.SelectionType.LineUnderCursor)
-        if cursor.selectedText().startswith("Downloading :"):
-            cursor.removeSelectedText()
-            if not cursor.atStart():
-                cursor.deletePreviousChar()
-        self.log_output.append(progress_message)
+            progress_message = f"{message} : {progress:.1f}% | {downloaded_str}/{total_str} | Speed: {speed_str}"
+            self.log_output.moveCursor(QTextCursor.MoveOperation.End)
+            
+            cursor = self.log_output.textCursor()
+            cursor.movePosition(QTextCursor.MoveOperation.End)
+            cursor.select(QTextCursor.SelectionType.LineUnderCursor)
+            if cursor.selectedText().startswith("Downloading :"):
+                cursor.removeSelectedText()
+                if not cursor.atStart():
+                    cursor.deletePreviousChar()
+            self.log_output.append(progress_message)
 
     def update_ui_for_download_start(self):
         self.download_selected_btn.setEnabled(False)
@@ -1351,11 +1481,12 @@ class SpotifyDownGUI(QWidget):
         if percentage > 0:
             self.progress_bar.setValue(percentage)
 
-    def stop_download(self):
+    def stop_download(self, is_token_error=False):
         if hasattr(self, 'worker'):
             self.worker.stop()
         self.stop_timer()
-        self.on_download_finished(True, "Download stopped by user.", [])
+        if not is_token_error:
+            self.on_download_finished(True, "Download stopped by user.", [])
         
     def on_download_finished(self, success, message, failed_tracks):
         self.progress_bar.hide()
