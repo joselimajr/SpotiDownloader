@@ -547,6 +547,8 @@ class SpotifyDownGUI(QWidget):
         self.use_album_folder = False
         self.retry_count = 3
         
+        self.cover_size = '640px'
+        
         self.load_config()
         
         self.initUI()
@@ -588,16 +590,18 @@ class SpotifyDownGUI(QWidget):
         self.last_token = self.settings.value('token', '')
         self.last_output_path = self.settings.value('output_path', os.path.expanduser("~\\Music"))
         self.filename_format = self.settings.value('filename_format', 'title_artist')
+        self.cover_size = self.settings.value('cover_size', '640px')
         self.use_album_folder = self.settings.value('use_album_folder', False, type=bool)
         self.retry_count = self.settings.value('retry_count', 3, type=int)
 
     def save_config(self):
         if all(hasattr(self, attr) and getattr(self, attr) is not None 
-            for attr in ['output_dir', 'artist_title_radio', 'album_folder_check', 'retry_dropdown']):
+            for attr in ['output_dir', 'artist_title_radio', 'album_folder_check', 'retry_dropdown', 'cover_dropdown']):
             self.settings.setValue('output_path', self.output_dir.text().strip())
             self.settings.setValue('filename_format', 'artist_title' if self.artist_title_radio.isChecked() else 'title_artist')
             self.settings.setValue('use_album_folder', self.album_folder_check.isChecked())
             self.settings.setValue('retry_count', int(self.retry_dropdown.currentText()))
+            self.settings.setValue('cover_size', self.cover_dropdown.currentText())
             self.settings.sync()
 
     def save_format_settings(self):
@@ -937,6 +941,8 @@ class SpotifyDownGUI(QWidget):
         download_label.setStyleSheet("font-weight: bold; color: palette(text);")
         download_layout.addWidget(download_label)
         
+        download_options_layout = QHBoxLayout()
+        
         retry_layout = QHBoxLayout()
         self.retry_label = QLabel('Maximum Retry Attempts:')
         self.retry_label.setStyleSheet("color: palette(text);")
@@ -950,9 +956,26 @@ class SpotifyDownGUI(QWidget):
         
         retry_layout.addWidget(self.retry_label)
         retry_layout.addWidget(self.retry_dropdown)
-        retry_layout.addStretch()
-        download_layout.addLayout(retry_layout)
         
+        cover_layout = QHBoxLayout()
+        cover_size_label = QLabel('Cover Art Size:')
+        cover_size_label.setStyleSheet("color: palette(text);")
+        self.cover_dropdown = QComboBox()
+        self.cover_dropdown.addItems(['300px', '640px', 'Original'])
+        self.cover_dropdown.setCurrentText(self.settings.value('cover_size', '640px'))
+        self.cover_dropdown.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.cover_dropdown.setFixedWidth(85)
+        self.cover_dropdown.currentTextChanged.connect(self.save_config)
+
+        cover_layout.addWidget(cover_size_label)
+        cover_layout.addWidget(self.cover_dropdown)
+        
+        download_options_layout.addLayout(retry_layout)
+        download_options_layout.addSpacing(20)
+        download_options_layout.addLayout(cover_layout)
+        download_options_layout.addStretch()
+        
+        download_layout.addLayout(download_options_layout)
         settings_layout.addWidget(download_group)
         
         file_group = QWidget()
@@ -1033,6 +1056,9 @@ class SpotifyDownGUI(QWidget):
         self.settings.setValue('retry_count', 3)
         self.settings.sync()
         
+        self.cover_dropdown.setCurrentText('640px')
+        self.settings.setValue('cover_size', '640px')
+        
         QMessageBox.information(self, "Success", "Settings have been reset to default values!")
     
     def setup_about_tab(self):
@@ -1101,7 +1127,7 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v2.5 | January 2025")
+        footer_label = QLabel("v2.6 | January 2025")
         footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -1196,7 +1222,8 @@ class SpotifyDownGUI(QWidget):
         try:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            metadata = loop.run_until_complete(get_track_metadata(track_id))
+            cover_size = self.cover_dropdown.currentText().replace('px', '')
+            metadata = loop.run_until_complete(get_track_metadata(track_id, cover_size))
             loop.close()
             
             formatted_artists = format_artists(metadata['artist'])
@@ -1229,14 +1256,16 @@ class SpotifyDownGUI(QWidget):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             
+            cover_size = self.cover_dropdown.currentText().replace('px', '')
+            
             if '/album/' in url:
-                metadata = loop.run_until_complete(get_album_metadata(item_id))
+                metadata = loop.run_until_complete(get_album_metadata(item_id, cover_size))
                 self.is_album = True
                 self.is_playlist = False
                 self.album_or_playlist_name = metadata['album_info']['title']
                 tracks_data = metadata['track_list']
             elif '/playlist/' in url:
-                metadata = loop.run_until_complete(get_playlist_metadata(item_id))
+                metadata = loop.run_until_complete(get_playlist_metadata(item_id, cover_size))
                 self.is_album = False
                 self.is_playlist = True
                 self.album_or_playlist_name = metadata['playlist_info']['title']
@@ -1435,7 +1464,7 @@ class SpotifyDownGUI(QWidget):
             self.album_or_playlist_name,
             self.artist_title_radio.isChecked(),
             self.album_folder_check.isChecked(),
-            int(self.retry_dropdown.currentText()),
+            int(self.retry_dropdown.currentText())
         )
         self.worker.finished.connect(self.on_download_finished)
         self.worker.progress.connect(self.update_progress)
