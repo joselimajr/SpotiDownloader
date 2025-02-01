@@ -15,7 +15,7 @@
 | Version   | Release Date | Token Requirement | Status |
 | :--: | :--: | :--: | :--: | 
 | [v2.4](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.4/SpotifyDown.exe) | 14-01-2025 | No | Experimental
-| [v2.6](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.6/SpotifyDown.exe) | 18-01-2025 | Yes | Maintained
+| [v2.7](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.7/SpotifyDown.exe) | 01-02-2025 | Yes | Maintained
 
 > [!Important]
 > - Requires **Google Chrome** to obtain the Token.
