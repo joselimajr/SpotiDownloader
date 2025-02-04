@@ -17,8 +17,8 @@
 ## Features
 
 - High-quality audio download at `320 kbps`
-- Automatically refresh token
 - No Spotify account required
+- Automatically refresh token
 - Light theme support
 
 ## Screenshots
