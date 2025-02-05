@@ -262,7 +262,7 @@ class SpotifyDownGUI(QWidget):
         self.filename_format = self.settings.value('filename_format', 'title_artist')
         self.use_track_numbers = self.settings.value('use_track_numbers', False, type=bool)
         self.use_album_subfolders = self.settings.value('use_album_subfolders', False, type=bool)
-        self.auto_token_fetch = self.settings.value('auto_token_fetch', True, type=bool)
+        self.auto_refresh_fetch = self.settings.value('auto_refresh_fetch', True, type=bool)
         
         self.elapsed_time = QTime(0, 0, 0)
         self.timer = QTimer(self)
@@ -330,9 +330,8 @@ class SpotifyDownGUI(QWidget):
         
         self.spotify_url.textChanged.connect(self.save_spotify_url)
         
-        self.fetch_btn = QPushButton('Fetch Tracks')
+        self.fetch_btn = QPushButton('Fetch')
         self.fetch_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.fetch_btn.setFixedWidth(100)
         self.fetch_btn.clicked.connect(self.fetch_tracks)
         
         url_layout.addWidget(spotify_label)
@@ -341,18 +340,17 @@ class SpotifyDownGUI(QWidget):
         spotify_layout.addLayout(url_layout)
         
         token_layout = QHBoxLayout()
-        token_label = QLabel('Spotify Token:')
+        token_label = QLabel('Token:')
         token_label.setFixedWidth(100)
         
         self.token_input = QLineEdit()
-        self.token_input.setPlaceholderText("Input your Spotify token here...")
+        self.token_input.setPlaceholderText("Input your token here...")
         self.token_input.setText(self.last_token)
         self.token_input.textChanged.connect(self.save_token)
         self.token_input.setClearButtonEnabled(True)
         
-        self.fetch_token_btn = QPushButton('Fetch Token')
+        self.fetch_token_btn = QPushButton('Fetch')
         self.fetch_token_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.fetch_token_btn.setFixedWidth(100)
         self.fetch_token_btn.clicked.connect(self.start_token_fetch)
         
         token_layout.addWidget(token_label)
@@ -502,31 +500,12 @@ class SpotifyDownGUI(QWidget):
     def setup_settings_tab(self):
         settings_tab = QWidget()
         settings_layout = QVBoxLayout()
-        settings_layout.setSpacing(5)
+        settings_layout.setSpacing(10)
         settings_layout.setContentsMargins(9, 9, 9, 9)
-
-        download_group = QWidget()
-        download_layout = QVBoxLayout(download_group)
-        download_layout.setSpacing(5)
-        download_layout.setContentsMargins(0, 0, 0, 15)
-        
-        download_label = QLabel('Download Settings')
-        download_label.setStyleSheet("font-weight: bold; color: palette(text);")
-        download_layout.addWidget(download_label)
-        
-        self.auto_token_checkbox = QCheckBox('Auto Token Fetch')
-        self.auto_token_checkbox.setStyleSheet("color: palette(text);")
-        self.auto_token_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.auto_token_checkbox.setChecked(self.settings.value('auto_token_fetch', False, type=bool))
-        self.auto_token_checkbox.toggled.connect(self.save_auto_token_setting)
-        download_layout.addWidget(self.auto_token_checkbox)
-        
-        settings_layout.addWidget(download_group)
 
         output_group = QWidget()
         output_layout = QVBoxLayout(output_group)
         output_layout.setSpacing(5)
-        output_layout.setContentsMargins(0, 0, 0, 15)
         
         output_label = QLabel('Output Directory')
         output_label.setStyleSheet("font-weight: bold; color: palette(text);")
@@ -550,7 +529,6 @@ class SpotifyDownGUI(QWidget):
         file_group = QWidget()
         file_layout = QVBoxLayout(file_group)
         file_layout.setSpacing(5)
-        file_layout.setContentsMargins(0, 0, 0, 0)
         
         file_label = QLabel('File Settings')
         file_label.setStyleSheet("font-weight: bold; color: palette(text);")
@@ -605,6 +583,23 @@ class SpotifyDownGUI(QWidget):
         file_layout.addLayout(checkbox_layout)
         
         settings_layout.addWidget(file_group)
+        
+        download_group = QWidget()
+        download_layout = QVBoxLayout(download_group)
+        download_layout.setSpacing(5)
+        
+        download_label = QLabel('Authentication')
+        download_label.setStyleSheet("font-weight: bold; color: palette(text);")
+        download_layout.addWidget(download_label)
+        
+        self.auto_token_checkbox = QCheckBox('Auto Refresh Token')
+        self.auto_token_checkbox.setStyleSheet("color: palette(text);")
+        self.auto_token_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.auto_token_checkbox.setChecked(self.settings.value('auto_refresh_fetch', False, type=bool))
+        self.auto_token_checkbox.toggled.connect(self.save_auto_token_setting)
+        download_layout.addWidget(self.auto_token_checkbox)
+        
+        settings_layout.addWidget(download_group)
 
         settings_layout.addStretch()
         settings_tab.setLayout(settings_layout)
@@ -660,7 +655,7 @@ class SpotifyDownGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v2.8 | February 2025")
+        footer_label = QLabel("v2.9 | February 2025")
         footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -701,7 +696,7 @@ class SpotifyDownGUI(QWidget):
         
     def save_auto_token_setting(self):
         is_enabled = self.auto_token_checkbox.isChecked()
-        self.settings.setValue('auto_token_fetch', is_enabled)
+        self.settings.setValue('auto_refresh_fetch', is_enabled)
         self.settings.sync()
         
         if not is_enabled and hasattr(self, 'token_auto_refresh_timer'):
