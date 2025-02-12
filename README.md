@@ -1,33 +1,21 @@
 [![GitHub All Releases](https://img.shields.io/github/downloads/afkarxyz/SpotifyDown-GUI/total?style=for-the-badge)](https://github.com/afkarxyz/SpotifyDown-GUI/releases)
 
-![SpotifyDown](https://github.com/user-attachments/assets/277195c6-de38-4f31-a41e-61fbc9df01d0)
+![SpotiDownloader](https://github.com/user-attachments/assets/351a0205-8ffa-428c-9d6b-8755078eb69f)
 
 <div align="center">
-<b>SpotifyDown</b> is a GUI tool for downloading Spotify tracks, albums, and playlists using the API provided by spotifydown.com
+<b>SpotiDownloader</b> is a GUI tool for downloading Spotify tracks, albums, and playlists using the API provided by spotidownloader.com
 </div>
 
-### [Download](https://github.com/afkarxyz/SpotifyDown-GUI/releases/download/v2.9/SpotifyDown.exe)
-
-#
-
-> [!Important]
-> - Requires **Google Chrome** to obtain the Token.
-> - If the Cover Art does not appear, please install the **K-Lite Codec Pack.**
-
-## Features
-
-- High-quality audio download at `320 kbps`
-- No Spotify account required
-- Auto refresh token
+### [Download](https://github.com/afkarxyz/SpotiDownloader/releases/download/v3.0/SpotiDownloader.exe)
 
 ## Screenshots
 
-![image](https://github.com/user-attachments/assets/266c6d6c-e230-4da7-b8cf-f3396fa98d03)
+![image](https://github.com/user-attachments/assets/87d88456-e5e9-4946-b34e-bc4de402b62e)
 
-![image](https://github.com/user-attachments/assets/a53fc27a-1835-47ec-b521-c1458ee14e39)
+![image](https://github.com/user-attachments/assets/8e04e7dd-973c-4033-b7af-7498c5eb2f99)
 
-![image](https://github.com/user-attachments/assets/759e3278-d2c0-482e-9647-7d16b60d40ec)
+![image](https://github.com/user-attachments/assets/6d274c58-8a09-4f0f-bb0f-cffeb0a92b26)
 
-![image](https://github.com/user-attachments/assets/b94a57c4-f688-4418-a6fa-a45357ae9124)
+![image](https://github.com/user-attachments/assets/62f77711-4323-4563-b840-0400ed5e5bf6)
 
-![image](https://github.com/user-attachments/assets/c4324bb6-2279-45f1-9ea6-14ee1d0f10d8)
+![image](https://github.com/user-attachments/assets/197f6bb5-a3c6-4a5e-ab4f-816740a6110e)
