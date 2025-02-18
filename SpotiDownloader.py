@@ -5,6 +5,7 @@ from datetime import datetime
 import requests
 import re
 import asyncio
+from packaging import version
 
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC, TIT2, TPE1, TALB, TDRC, TRCK, TSRC, COMM
@@ -20,7 +21,8 @@ from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 from getMetadata import get_filtered_data, parse_uri, SpotifyInvalidUrlException
-from getToken import main as get_token
+from getToken_v1 import main as get_token_fast
+from getToken_v2 import main as get_token_slow
 
 @dataclass
 class Track:
@@ -287,7 +289,7 @@ class UpdateDialog(QDialog):
 class SpotiDownloaderGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.current_version = "3.1" 
+        self.current_version = "3.2" 
         self.tracks = []
         self.album_or_playlist_name = ''
         self.reset_state()
@@ -301,6 +303,7 @@ class SpotiDownloaderGUI(QWidget):
         self.use_album_subfolders = self.settings.value('use_album_subfolders', False, type=bool)
         self.auto_refresh_fetch = self.settings.value('auto_refresh_fetch', True, type=bool)
         self.check_for_updates = self.settings.value('check_for_updates', True, type=bool)
+        self.token_fetch_mode = self.settings.value('token_fetch_mode', 'fast')
         
         self.elapsed_time = QTime(0, 0, 0)
         self.timer = QTimer(self)
@@ -324,7 +327,7 @@ class SpotiDownloaderGUI(QWidget):
                 data = response.json()
                 new_version = data.get("version")
                 
-                if new_version and new_version != self.current_version:
+                if new_version and version.parse(new_version) > version.parse(self.current_version):
                     dialog = UpdateDialog(self.current_version, new_version, self)
                     result = dialog.exec()
                     
@@ -653,15 +656,40 @@ class SpotiDownloaderGUI(QWidget):
         download_label.setStyleSheet("font-weight: bold; color: palette(text);")
         download_layout.addWidget(download_label)
         
+        auth_options_layout = QHBoxLayout()
+        
         self.auto_token_checkbox = QCheckBox('Auto Refresh Token')
         self.auto_token_checkbox.setStyleSheet("color: palette(text);")
         self.auto_token_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
         self.auto_token_checkbox.setChecked(self.settings.value('auto_refresh_fetch', False, type=bool))
         self.auto_token_checkbox.toggled.connect(self.save_auto_token_setting)
-        download_layout.addWidget(self.auto_token_checkbox)
+        auth_options_layout.addWidget(self.auto_token_checkbox)
         
+        self.fetch_mode_group = QButtonGroup(self)
+        self.fast_mode_radio = QRadioButton('Fast')
+        self.fast_mode_radio.setStyleSheet("color: palette(text);")
+        self.fast_mode_radio.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.fast_mode_radio.toggled.connect(self.save_fetch_mode)
+        
+        self.slow_mode_radio = QRadioButton('Slow')
+        self.slow_mode_radio.setStyleSheet("color: palette(text);")
+        self.slow_mode_radio.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.slow_mode_radio.toggled.connect(self.save_fetch_mode)
+        
+        if self.token_fetch_mode == "slow":
+            self.slow_mode_radio.setChecked(True)
+        else:
+            self.fast_mode_radio.setChecked(True)
+        
+        self.fetch_mode_group.addButton(self.fast_mode_radio)
+        self.fetch_mode_group.addButton(self.slow_mode_radio)
+        
+        auth_options_layout.addWidget(self.fast_mode_radio)
+        auth_options_layout.addWidget(self.slow_mode_radio)
+        auth_options_layout.addStretch()
+        
+        download_layout.addLayout(auth_options_layout)
         settings_layout.addWidget(download_group)
-
         settings_layout.addStretch()
         settings_tab.setLayout(settings_layout)
         self.tab_widget.addTab(settings_tab, "Settings")
@@ -716,7 +744,7 @@ class SpotiDownloaderGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v3.1 | February 2025")
+        footer_label = QLabel("v3.2 | February 2025")
         footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -758,11 +786,18 @@ class SpotiDownloaderGUI(QWidget):
         
         if not is_enabled and hasattr(self, 'token_auto_refresh_timer'):
             self.token_auto_refresh_timer.stop()
+            
+    def save_fetch_mode(self):
+        self.token_fetch_mode = "slow" if self.slow_mode_radio.isChecked() else "fast"
+        self.settings.setValue('token_fetch_mode', self.token_fetch_mode)
+        self.settings.sync()
 
     def start_token_fetch(self):
         self.fetch_token_btn.setEnabled(False)
         
-        self.token_thread = TokenFetchThread(get_token)
+        get_token_func = get_token_slow if self.token_fetch_mode == "slow" else get_token_fast
+        
+        self.token_thread = TokenFetchThread(get_token_func)
         self.token_thread.token_fetched.connect(self.on_token_fetched)
         self.token_thread.token_error.connect(self.on_token_fetch_error)
         self.token_thread.finished.connect(self.on_token_fetch_finished)
