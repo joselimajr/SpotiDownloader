@@ -6,16 +6,21 @@
 <b>SpotiDownloader</b> is a GUI tool for downloading Spotify tracks, albums, and playlists using the API provided by spotidownloader.com
 </div>
 
-### [Download](https://github.com/afkarxyz/SpotiDownloader/releases/download/v3.0/SpotiDownloader.exe)
+### [Download](https://github.com/afkarxyz/SpotiDownloader/releases/download/v3.1/SpotiDownloader.exe)
+
+#
+
+> [!Important]
+> Requires **Google Chrome** to obtain the Token.
 
 ## Screenshots
 
-![image](https://github.com/user-attachments/assets/87d88456-e5e9-4946-b34e-bc4de402b62e)
+![image](https://github.com/user-attachments/assets/d96e61be-fae7-44d4-83d5-8047476e2119)
 
-![image](https://github.com/user-attachments/assets/8e04e7dd-973c-4033-b7af-7498c5eb2f99)
+![image](https://github.com/user-attachments/assets/a776bbef-da91-4108-bdee-b3f140cdf449)
 
-![image](https://github.com/user-attachments/assets/6d274c58-8a09-4f0f-bb0f-cffeb0a92b26)
+![image](https://github.com/user-attachments/assets/9785a25a-49a0-467c-a67c-99aee70a3adc)
 
-![image](https://github.com/user-attachments/assets/62f77711-4323-4563-b840-0400ed5e5bf6)
+![image](https://github.com/user-attachments/assets/491aeab3-6171-469e-92f2-1c02dce3b7fd)
 
-![image](https://github.com/user-attachments/assets/197f6bb5-a3c6-4a5e-ab4f-816740a6110e)
+![image](https://github.com/user-attachments/assets/77432189-eeea-474f-b632-e6256350f882)
