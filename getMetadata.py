@@ -2,31 +2,6 @@ from time import sleep
 from urllib.parse import urlparse, parse_qs
 import requests
 import json
-from random import shuffle
-
-def get_proxy_list():
-    base_url = "https://raw.githubusercontent.com/afkarxyz/proxies/main/"
-    proxy_types = ["http", "https", "socks4", "socks5"]
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
-    }
-    
-    all_proxies = []
-    
-    for proxy_type in proxy_types:
-        try:
-            response = requests.get(f"{base_url}{proxy_type}", headers=headers)
-            if response.status_code == 200:
-                proxies = response.text.splitlines()
-                formatted_proxies = [(proxy, proxy_type) for proxy in proxies]
-                all_proxies.extend(formatted_proxies)
-        except:
-            continue
-    
-    if all_proxies:
-        shuffle(all_proxies)
-        return all_proxies
-    return None
 
 token_url = 'https://open.spotify.com/get_access_token?reason=transport&productType=web_player'
 playlist_base_url = 'https://api.spotify.com/v1/playlists/{}'
@@ -80,15 +55,10 @@ def parse_uri(uri):
 
     raise SpotifyInvalidUrlException("ERROR: unable to determine Spotify URL type or type is unsupported.")
 
-def get_json_from_api(api_url, access_token, proxy, proxy_type):
+def get_json_from_api(api_url, access_token):
     headers.update({'Authorization': 'Bearer {}'.format(access_token)})
     
-    req = requests.get(
-        api_url, 
-        headers=headers, 
-        proxies={proxy_type: proxy},
-        timeout=10
-    )
+    req = requests.get(api_url, headers=headers, timeout=10)
 
     if req.status_code == 429:
         seconds = int(req.headers.get("Retry-After")) + 1
@@ -103,140 +73,80 @@ def get_json_from_api(api_url, access_token, proxy, proxy_type):
 
 def get_raw_spotify_data(spotify_url):
     url_info = parse_uri(spotify_url)
-    proxies = get_proxy_list()
-    if not proxies:
-        return {"error": "Failed to get proxy list"}
     
-    token = None
-    for proxy, proxy_type in proxies:
-        try:
-            req = requests.get(
-                token_url, 
-                headers=headers, 
-                proxies={proxy_type: proxy},
-                timeout=10
-            )
-            if req.status_code == 200:
-                token = req.json()
-                break
-        except:
-            continue
-    
-    if not token:
-        return {"error": "Failed to get access token with available proxies"}
+    try:
+        req = requests.get(token_url, headers=headers, timeout=10)
+        if req.status_code != 200:
+            return {"error": "Failed to get access token"}
+        token = req.json()
+    except:
+        return {"error": "Failed to get access token"}
     
     raw_data = {}
     
     if url_info['type'] == "playlist":
-        playlist_data = None
-        for proxy, proxy_type in proxies:
-            try:
-                playlist_data = get_json_from_api(
-                    playlist_base_url.format(url_info["id"]), 
-                    token["accessToken"],
-                    proxy,
-                    proxy_type
-                )
-                if playlist_data:
+        try:
+            playlist_data = get_json_from_api(
+                playlist_base_url.format(url_info["id"]), 
+                token["accessToken"]
+            )
+            if not playlist_data:
+                return {"error": "Failed to get playlist data"}
+                
+            raw_data = playlist_data
+            
+            tracks = []
+            tracks_url = f'https://api.spotify.com/v1/playlists/{url_info["id"]}/tracks?limit=100'
+            while tracks_url:
+                track_data = get_json_from_api(tracks_url, token["accessToken"])
+                if not track_data:
                     break
-            except:
-                continue
-                
-        if not playlist_data:
-            return {"error": "Failed to get playlist data with available proxies"}
-            
-        raw_data = playlist_data
-        
-        tracks = []
-        tracks_url = f'https://api.spotify.com/v1/playlists/{url_info["id"]}/tracks?limit=100'
-        while tracks_url:
-            track_data = None
-            for proxy, proxy_type in proxies:
-                try:
-                    track_data = get_json_from_api(
-                        tracks_url,
-                        token["accessToken"],
-                        proxy,
-                        proxy_type
-                    )
-                    if track_data:
-                        break
-                except:
-                    continue
                     
-            if not track_data:
-                break
+                tracks.extend(track_data['items'])
+                tracks_url = track_data.get('next')
                 
-            tracks.extend(track_data['items'])
-            tracks_url = track_data.get('next')
-            
-        raw_data['tracks']['items'] = tracks
+            raw_data['tracks']['items'] = tracks
+        except:
+            return {"error": "Failed to get playlist data"}
             
     elif url_info["type"] == "album":
-        album_data = None
-        for proxy, proxy_type in proxies:
-            try:
-                album_data = get_json_from_api(
-                    album_base_url.format(url_info["id"]),
-                    token["accessToken"],
-                    proxy,
-                    proxy_type
-                )
-                if album_data:
-                    album_data['_token'] = token["accessToken"]
+        try:
+            album_data = get_json_from_api(
+                album_base_url.format(url_info["id"]),
+                token["accessToken"]
+            )
+            if not album_data:
+                return {"error": "Failed to get album data"}
+                
+            album_data['_token'] = token["accessToken"]
+            raw_data = album_data
+            
+            tracks = []
+            tracks_url = f'{album_base_url.format(url_info["id"])}/tracks?limit=50'
+            while tracks_url:
+                track_data = get_json_from_api(tracks_url, token["accessToken"])
+                if not track_data:
                     break
-            except:
-                continue
-                
-        if not album_data:
-            return {"error": "Failed to get album data with available proxies"}
-            
-        raw_data = album_data
-        
-        tracks = []
-        tracks_url = f'{album_base_url.format(url_info["id"])}/tracks?limit=50'
-        while tracks_url:
-            track_data = None
-            for proxy, proxy_type in proxies:
-                try:
-                    track_data = get_json_from_api(
-                        tracks_url,
-                        token["accessToken"],
-                        proxy,
-                        proxy_type
-                    )
-                    if track_data:
-                        break
-                except:
-                    continue
                     
-            if not track_data:
-                break
+                tracks.extend(track_data['items'])
+                tracks_url = track_data.get('next')
                 
-            tracks.extend(track_data['items'])
-            tracks_url = track_data.get('next')
-            
-        raw_data['tracks']['items'] = tracks
+            raw_data['tracks']['items'] = tracks
+        except:
+            return {"error": "Failed to get album data"}
                 
     elif url_info["type"] == "track":
-        track_data = None
-        for proxy, proxy_type in proxies:
-            try:
-                track_data = get_json_from_api(
-                    track_base_url.format(url_info["id"]),
-                    token["accessToken"],
-                    proxy,
-                    proxy_type
-                )
-                if track_data:
-                    break
-            except:
-                continue
+        try:
+            track_data = get_json_from_api(
+                track_base_url.format(url_info["id"]),
+                token["accessToken"]
+            )
+            if not track_data:
+                return {"error": "Failed to get track data"}
                 
-        if not track_data:
-            return {"error": "Failed to get track data with available proxies"}
-            
-        raw_data = track_data
+            raw_data = track_data
+        except:
+            return {"error": "Failed to get track data"}
 
     return raw_data
 
@@ -276,50 +186,39 @@ def format_album_data(album_data):
     image_url = album_data.get('images', [{}])[0].get('url', '')
     
     track_list = []
-    proxies = get_proxy_list()
-    
     for track in album_data.get('tracks', {}).get('items', []):
         track_id = track['id']
-        track_data = None
-        
-        if proxies:
-            for proxy, proxy_type in proxies:
-                try:
-                    track_data = get_json_from_api(
-                        track_base_url.format(track_id),
-                        album_data['_token'],
-                        proxy,
-                        proxy_type
-                    )
-                    if track_data:
-                        break
-                except:
-                    continue
-        
-        if track_data:
-            formatted_track = format_track_data(track_data)
-            track_list.append(formatted_track['track'])
-        else:
-            track_artists = []
-            track_artist_ids = []
-            for artist in track.get('artists', []):
-                track_artists.append(artist['name'])
-                track_artist_ids.append(artist['id'])
-                
-            track_list.append({
-                "id": track.get('id', ''),
-                "uri": track.get('uri', ''),
-                "artists": ", ".join(track_artists),
-                "artist_ids": track_artist_ids,
-                "name": track.get('name', ''),
-                "album_id": album_data.get('id', ''),
-                "album_name": album_data.get('name', ''),
-                "duration_ms": track.get('duration_ms', 0),
-                "images": image_url,
-                "release_date": album_data.get('release_date', ''),
-                "track_number": track.get('track_number', 0),
-                "isrc": track.get('external_ids', {}).get('isrc', '')
-            })
+        try:
+            track_data = get_json_from_api(
+                track_base_url.format(track_id),
+                album_data['_token']
+            )
+            if track_data:
+                formatted_track = format_track_data(track_data)
+                track_list.append(formatted_track['track'])
+            else:
+                track_artists = []
+                track_artist_ids = []
+                for artist in track.get('artists', []):
+                    track_artists.append(artist['name'])
+                    track_artist_ids.append(artist['id'])
+                    
+                track_list.append({
+                    "id": track.get('id', ''),
+                    "uri": track.get('uri', ''),
+                    "artists": ", ".join(track_artists),
+                    "artist_ids": track_artist_ids,
+                    "name": track.get('name', ''),
+                    "album_id": album_data.get('id', ''),
+                    "album_name": album_data.get('name', ''),
+                    "duration_ms": track.get('duration_ms', 0),
+                    "images": image_url,
+                    "release_date": album_data.get('release_date', ''),
+                    "track_number": track.get('track_number', 0),
+                    "isrc": track.get('external_ids', {}).get('isrc', '')
+                })
+        except:
+            continue
     
     return {
         "album_info": {
