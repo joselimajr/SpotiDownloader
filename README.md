@@ -6,7 +6,7 @@
 <b>SpotiDownloader</b> is a GUI tool for downloading Spotify tracks, albums, and playlists using the API provided by spotidownloader.com
 </div>
 
-### [Download](https://github.com/afkarxyz/SpotiDownloader/releases/download/v3.2/SpotiDownloader.exe)
+### [Download](https://github.com/afkarxyz/SpotiDownloader/releases/download/v3.3/SpotiDownloader.exe)
 
 #
 
@@ -23,4 +23,4 @@
 
 ![image](https://github.com/user-attachments/assets/07247a0e-cc28-49a3-95aa-833063c2037d)
 
-![image](https://github.com/user-attachments/assets/29c41cd6-7943-4974-95a6-a0c4a1d36547)
+![image](https://github.com/user-attachments/assets/8c4b228a-0121-4c27-80ad-da46a7bfb40e)
