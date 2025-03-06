@@ -128,7 +128,6 @@ class DownloadWorker(QThread):
             if os.path.exists(filepath):
                 return True, "File already exists - skipped"
 
-            # Use direct download method if token is None
             if self.token is None:
                 download_url = self.parent.get_direct_download_url(track.id)
                 if not download_url:
@@ -144,7 +143,6 @@ class DownloadWorker(QThread):
                 self.embed_metadata(filepath, track)
                 return True, ""
             
-            # Original token-based download method
             response = requests.get(
                 f"https://api.spotidownloader.com/download/{track.id}?token={self.token}", 
                 headers={
@@ -444,7 +442,6 @@ class SpotiDownloaderGUI(QWidget):
         
         self.main_layout.addLayout(spotify_layout)
         
-        # Set initial visibility based on settings
         if self.use_without_token:
             self.token_label.setVisible(False)
             self.token_input.setVisible(False)
@@ -832,12 +829,10 @@ class SpotiDownloaderGUI(QWidget):
         self.use_without_token = use_without_token
         self.settings.sync()
         
-        # Hide token input and related elements if "Direct Download" is checked
         self.token_label.setVisible(not use_without_token)
         self.token_input.setVisible(not use_without_token)
         self.fetch_token_btn.setVisible(not use_without_token)
         
-        # Disable auto refresh token if we're not using tokens
         if use_without_token:
             self.auto_token_checkbox.setChecked(False)
             self.auto_token_checkbox.setEnabled(False)
@@ -1169,7 +1164,6 @@ class SpotiDownloaderGUI(QWidget):
             self.log_output.append('Warning: Invalid output directory.')
             return
 
-        # Only check for token if not using "Download without Token"
         if not self.download_without_token_checkbox.isChecked() and not self.token_input.text().strip():
             self.log_output.append("Error: Please enter your token")
             return
@@ -1187,11 +1181,10 @@ class SpotiDownloaderGUI(QWidget):
             self.log_output.append(f"Error: An error occurred while starting the download: {str(e)}")
 
     def start_download_worker(self, tracks_to_download, outpath):
-        # Use None as token if "Download without Token" is checked
         token = None if self.download_without_token_checkbox.isChecked() else self.token_input.text().strip()
         
         self.worker = DownloadWorker(
-            self,  # Pass self as parent
+            self,
             tracks_to_download, 
             outpath, 
             token,
