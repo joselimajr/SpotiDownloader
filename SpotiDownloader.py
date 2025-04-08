@@ -325,7 +325,7 @@ class UpdateDialog(QDialog):
 class SpotiDownloaderGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.current_version = "3.5" 
+        self.current_version = "3.6" 
         self.tracks = []
         self.album_or_playlist_name = ''
         self.reset_state()
@@ -795,7 +795,7 @@ class SpotiDownloaderGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v3.5 | March 2025")
+        footer_label = QLabel("v3.6 | April 2025")
         footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -956,6 +956,9 @@ class SpotiDownloaderGUI(QWidget):
         self.fetch_btn.setEnabled(False)
         self.reset_state()
         self.reset_ui()
+        
+        self.log_output.append('Just a moment. Fetching metadata...')
+        self.tab_widget.setCurrentWidget(self.process_tab)
         
         self.fetch_thread = FetchTracksThread(url)
         self.fetch_thread.finished.connect(self.on_fetch_complete)
