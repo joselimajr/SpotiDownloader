@@ -21,7 +21,7 @@ from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 from getMetadata import get_filtered_data, parse_uri, SpotifyInvalidUrlException
-from getToken import main as get_token
+from getToken import main as get_session_token
 
 @dataclass
 class Track:
@@ -69,7 +69,7 @@ class TokenFetchThread(QThread):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        token = loop.run_until_complete(get_token())
+        token = loop.run_until_complete(get_session_token())
         
         if token:
             self.token_fetched.emit(token)
@@ -308,7 +308,7 @@ class UpdateDialog(QDialog):
 class SpotiDownloaderGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.current_version = "3.8" 
+        self.current_version = "3.9" 
         self.tracks = []
         self.album_or_playlist_name = ''
         self.reset_state()
@@ -777,7 +777,7 @@ class SpotiDownloaderGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v3.8 | April 2025")
+        footer_label = QLabel("v3.9 | April 2025")
         footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
