@@ -21,8 +21,7 @@ from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 from getMetadata import get_filtered_data, parse_uri, SpotifyInvalidUrlException
-from getToken_v1 import main as get_token_fast
-from getToken_v2 import main as get_token_slow
+from getToken import main as get_token
 
 @dataclass
 class Track:
@@ -62,15 +61,15 @@ class TokenFetchThread(QThread):
     token_fetched = pyqtSignal(str)
     token_error = pyqtSignal(str)
 
-    def __init__(self, get_token_func):
+    def __init__(self, interval):
         super().__init__()
-        self.get_token_func = get_token_func
+        self.interval = interval
 
     def run(self):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        token = loop.run_until_complete(self.get_token_func())
+        token = loop.run_until_complete(get_token())
         
         if token:
             self.token_fetched.emit(token)
@@ -122,42 +121,26 @@ class DownloadWorker(QThread):
 
             if (self.is_album or (self.is_playlist and self.use_album_subfolders)) and self.use_track_numbers:
                 filename = f"{track.track_number:02d} - {filename}"
-            
+        
             filepath = os.path.join(outpath, filename)
 
             if os.path.exists(filepath):
                 return True, "File already exists - skipped"
 
-            if self.token is None:
-                download_url = self.parent.get_direct_download_url(track.id)
-                if not download_url:
-                    return False, "Failed to get direct download URL"
-                
-                host = download_url.split('//', 1)[1].split('/', 1)[0]
-                
-                headers = {
-                    'Host': host,
-                    'Referer': 'https://spotidownloader.com/',
-                    'Origin': 'https://spotidownloader.com'
-                }
-                
-                audio_response = requests.get(download_url, headers=headers, timeout=300)
-                if audio_response.status_code != 200:
-                    return False, f"Failed to download audio file. Status code: {audio_response.status_code}"
-                
-                with open(filepath, "wb") as file:
-                    file.write(audio_response.content)
-                
-                self.embed_metadata(filepath, track)
-                return True, ""
+            headers = {
+                'Host': 'api.spotidownloader.com',
+                'Referer': 'https://spotidownloader.com/',
+                'Origin': 'https://spotidownloader.com',
+                'Authorization': f'Bearer {self.token}',
+                'Content-Type': 'application/json'
+            }
             
-            response = requests.get(
-                f"https://api.spotidownloader.com/download/{track.id}?token={self.token}", 
-                headers={
-                    'Host': 'api.spotidownloader.com',
-                    'Referer': 'https://spotidownloader.com/',
-                    'Origin': 'https://spotidownloader.com',
-                },
+            payload = {"id": track.id}
+            
+            response = requests.post(
+                "https://api.spotidownloader.com/download",
+                headers=headers,
+                json=payload,
                 timeout=30
             )
             
@@ -325,7 +308,7 @@ class UpdateDialog(QDialog):
 class SpotiDownloaderGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.current_version = "3.7" 
+        self.current_version = "3.8" 
         self.tracks = []
         self.album_or_playlist_name = ''
         self.reset_state()
@@ -340,7 +323,7 @@ class SpotiDownloaderGUI(QWidget):
         self.auto_refresh_fetch = self.settings.value('auto_refresh_fetch', True, type=bool)
         self.check_for_updates = self.settings.value('check_for_updates', True, type=bool)
         self.token_fetch_mode = self.settings.value('token_fetch_mode', 'fast')
-        self.use_without_token = self.settings.value('download_without_token', False, type=bool)
+        self.token_refresh_interval = self.settings.value('token_refresh_interval', 60000, type=int)
         
         self.elapsed_time = QTime(0, 0, 0)
         self.timer = QTimer(self)
@@ -462,11 +445,6 @@ class SpotiDownloaderGUI(QWidget):
         
         self.main_layout.addLayout(spotify_layout)
         
-        if self.use_without_token:
-            self.token_label.setVisible(False)
-            self.token_input.setVisible(False)
-            self.fetch_token_btn.setVisible(False)
-
     def browse_output(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Output Directory")
         if directory:
@@ -713,30 +691,34 @@ class SpotiDownloaderGUI(QWidget):
         self.fast_mode_radio.setStyleSheet("color: palette(text);")
         self.fast_mode_radio.setCursor(Qt.CursorShape.PointingHandCursor)
         self.fast_mode_radio.toggled.connect(self.save_fetch_mode)
-        
+        self.fast_mode_radio.setToolTip("Refresh token every 1 minute")
+
+        self.normal_mode_radio = QRadioButton('Normal')
+        self.normal_mode_radio.setStyleSheet("color: palette(text);")
+        self.normal_mode_radio.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.normal_mode_radio.toggled.connect(self.save_fetch_mode)
+        self.normal_mode_radio.setToolTip("Refresh token every 2 minutes")
+
         self.slow_mode_radio = QRadioButton('Slow')
         self.slow_mode_radio.setStyleSheet("color: palette(text);")
         self.slow_mode_radio.setCursor(Qt.CursorShape.PointingHandCursor)
         self.slow_mode_radio.toggled.connect(self.save_fetch_mode)
-        
+        self.slow_mode_radio.setToolTip("Refresh token every 3 minutes")
+
         if self.token_fetch_mode == "slow":
             self.slow_mode_radio.setChecked(True)
+        elif self.token_fetch_mode == "normal":
+            self.normal_mode_radio.setChecked(True)
         else:
             self.fast_mode_radio.setChecked(True)
-        
-        self.fetch_mode_group.addButton(self.fast_mode_radio)
-        self.fetch_mode_group.addButton(self.slow_mode_radio)
-        
-        auth_options_layout.addWidget(self.fast_mode_radio)
-        auth_options_layout.addWidget(self.slow_mode_radio)
-        
-        self.download_without_token_checkbox = QCheckBox('Direct Download (No Token Required)')
-        self.download_without_token_checkbox.setStyleSheet("color: palette(text);")
-        self.download_without_token_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.download_without_token_checkbox.setChecked(self.use_without_token)
-        self.download_without_token_checkbox.toggled.connect(self.toggle_token_input)
-        auth_options_layout.addWidget(self.download_without_token_checkbox)
 
+        self.fetch_mode_group.addButton(self.fast_mode_radio)
+        self.fetch_mode_group.addButton(self.normal_mode_radio)
+        self.fetch_mode_group.addButton(self.slow_mode_radio)
+
+        auth_options_layout.addWidget(self.fast_mode_radio)
+        auth_options_layout.addWidget(self.normal_mode_radio)
+        auth_options_layout.addWidget(self.slow_mode_radio)
         auth_options_layout.addStretch()
         
         download_layout.addLayout(auth_options_layout)
@@ -795,7 +777,7 @@ class SpotiDownloaderGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v3.7 | April 2025")
+        footer_label = QLabel("v3.8 | April 2025")
         footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -839,36 +821,27 @@ class SpotiDownloaderGUI(QWidget):
             self.token_auto_refresh_timer.stop()
             
     def save_fetch_mode(self):
-        self.token_fetch_mode = "slow" if self.slow_mode_radio.isChecked() else "fast"
+        if self.slow_mode_radio.isChecked():
+            self.token_fetch_mode = "slow"
+            self.token_refresh_interval = 180000  
+        elif self.normal_mode_radio.isChecked():
+            self.token_fetch_mode = "normal"
+            self.token_refresh_interval = 120000  
+        else:
+            self.token_fetch_mode = "fast"
+            self.token_refresh_interval = 60000   
+        
         self.settings.setValue('token_fetch_mode', self.token_fetch_mode)
+        self.settings.setValue('token_refresh_interval', self.token_refresh_interval)
         self.settings.sync()
 
-    def toggle_token_input(self):
-        use_without_token = self.download_without_token_checkbox.isChecked()
-        self.settings.setValue('download_without_token', use_without_token)
-        self.use_without_token = use_without_token
-        self.settings.sync()
-        
-        self.token_label.setVisible(not use_without_token)
-        self.token_input.setVisible(not use_without_token)
-        self.fetch_token_btn.setVisible(not use_without_token)
-        
-        if use_without_token:
-            self.auto_token_checkbox.setChecked(False)
-            self.auto_token_checkbox.setEnabled(False)
-            self.fast_mode_radio.setEnabled(False)
-            self.slow_mode_radio.setEnabled(False)
-        else:
-            self.auto_token_checkbox.setEnabled(True)
-            self.fast_mode_radio.setEnabled(True)
-            self.slow_mode_radio.setEnabled(True)
+        if hasattr(self, 'token_countdown'):
+            self.token_countdown = self.token_refresh_interval // 1000
 
     def start_token_fetch(self):
         self.fetch_token_btn.setEnabled(False)
         
-        get_token_func = get_token_slow if self.token_fetch_mode == "slow" else get_token_fast
-        
-        self.token_thread = TokenFetchThread(get_token_func)
+        self.token_thread = TokenFetchThread(self.token_refresh_interval)
         self.token_thread.token_fetched.connect(self.on_token_fetched)
         self.token_thread.token_error.connect(self.on_token_fetch_error)
         self.token_thread.finished.connect(self.on_token_fetch_finished)
@@ -880,13 +853,13 @@ class SpotiDownloaderGUI(QWidget):
         self.save_token()
         self.log_output.append("Token successfully saved!")
         
-        self.token_countdown = 180
+        self.token_countdown = self.token_refresh_interval // 1000
         self.token_countdown_timer = QTimer(self)
         self.token_countdown_timer.timeout.connect(self.update_token_countdown)
         self.token_countdown_timer.start(1000)
         
         if self.auto_token_checkbox.isChecked():
-            self.token_auto_refresh_timer.start(180000)
+            self.token_auto_refresh_timer.start(self.token_refresh_interval)
         
         self.fetch_token_btn.installEventFilter(self)
         self.is_hover_active = False
@@ -1198,7 +1171,7 @@ class SpotiDownloaderGUI(QWidget):
             self.log_output.append('Warning: Invalid output directory.')
             return
 
-        if not self.download_without_token_checkbox.isChecked() and not self.token_input.text().strip():
+        if not self.token_input.text().strip():
             self.log_output.append("Error: Please enter your token")
             return
 
@@ -1215,7 +1188,7 @@ class SpotiDownloaderGUI(QWidget):
             self.log_output.append(f"Error: An error occurred while starting the download: {str(e)}")
 
     def start_download_worker(self, tracks_to_download, outpath):
-        token = None if self.download_without_token_checkbox.isChecked() else self.token_input.text().strip()
+        token = self.token_input.text().strip()
         
         self.worker = DownloadWorker(
             self,
@@ -1330,21 +1303,6 @@ class SpotiDownloaderGUI(QWidget):
     def stop_timer(self):
         self.timer.stop()
         self.time_label.hide()
-
-    def get_direct_download_url(self, track_id):
-        try:
-            spotify_url = f'https://open.spotify.com/track/{track_id}'
-            response = requests.post('https://spotifydownloader.pro/', data={'url': spotify_url})
-            html = response.text
-            
-            download_match = re.search(r'class="rb_btn"\s*href="(.*?)"', html)
-            
-            if download_match:
-                return download_match.group(1)
-            return None
-        except Exception as e:
-            self.log_output.append(f"Error getting direct download URL: {str(e)}")
-            return None
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
