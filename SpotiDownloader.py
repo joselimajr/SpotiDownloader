@@ -16,7 +16,7 @@ from PyQt6.QtWidgets import (
     QAbstractItemView, QSpacerItem, QSizePolicy, QProgressBar, QCheckBox, QDialog,
     QDialogButtonBox
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QTimer, QTime, QSettings, pyqtSignal
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QTimer, QTime, QSettings
 from PyQt6.QtGui import QIcon, QTextCursor, QDesktopServices, QPixmap
 from PyQt6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
@@ -270,6 +270,187 @@ class DownloadWorker(QThread):
         self.is_stopped = True
         self.is_paused = False
 
+class DirectDownloadWorker(QThread):
+    finished = pyqtSignal(bool, str, list)
+    progress = pyqtSignal(str, int)
+    
+    def __init__(self, parent, tracks, outpath, is_single_track=False, is_album=False, is_playlist=False, 
+                 album_or_playlist_name='', filename_format='title_artist', use_track_numbers=True,
+                 use_album_subfolders=False):
+        super().__init__()
+        self.parent = parent
+        self.tracks = tracks
+        self.outpath = outpath
+        self.is_single_track = is_single_track
+        self.is_album = is_album
+        self.is_playlist = is_playlist
+        self.album_or_playlist_name = album_or_playlist_name
+        self.filename_format = filename_format
+        self.use_track_numbers = use_track_numbers
+        self.use_album_subfolders = use_album_subfolders
+        self.is_paused = False
+        self.is_stopped = False
+        self.failed_tracks = []
+
+    def get_formatted_filename(self, track):
+        if self.filename_format == "artist_title":
+            filename = f"{track.artists} - {track.title}.mp3"
+        else:
+            filename = f"{track.title} - {track.artists}.mp3"
+        
+        return re.sub(r'[<>:"/\\|?*]', '_', filename)
+
+    def download_track(self, track):
+        try:
+            filename = self.get_formatted_filename(track)
+            
+            if self.is_playlist and self.use_album_subfolders:
+                album_folder = re.sub(r'[<>:"/\\|?*]', '_', track.album)
+                outpath = os.path.join(self.outpath, album_folder)
+                os.makedirs(outpath, exist_ok=True)
+            else:
+                outpath = self.outpath
+
+            if (self.is_album or (self.is_playlist and self.use_album_subfolders)) and self.use_track_numbers:
+                filename = f"{track.track_number:02d} - {filename}"
+        
+            filepath = os.path.join(outpath, filename)
+
+            if os.path.exists(filepath):
+                return True, "File already exists - skipped"
+
+            track_url = f"https://open.spotify.com/track/{track.id}"
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/135.0.0.0 Safari/537.36"
+            }
+            
+            response = requests.post(
+                "https://spotifydownloader.pro", 
+                data={"url": track_url},
+                headers=headers,
+                timeout=30
+            )
+            
+            if response.status_code != 200:
+                return False, f"API request failed with status code: {response.status_code}"
+            
+            download_link_match = re.search(r'<a class="rb_btn" href="([^"]+)"', response.text)
+            if not download_link_match:
+                return False, "Could not find download link in response"
+                
+            download_link = download_link_match.group(1)
+            
+            audio_response = requests.get(download_link, headers=headers, timeout=300)
+            if audio_response.status_code != 200:
+                return False, f"Failed to download audio file. Status code: {audio_response.status_code}"
+            
+            with open(filepath, "wb") as file:
+                file.write(audio_response.content)
+            
+            self.embed_metadata(filepath, track)
+            
+            return True, ""
+        except requests.Timeout:
+            return False, "Request timed out - connection took too long"
+        except Exception as e:
+            return False, f"Exception occurred: {str(e)}"
+
+    def embed_metadata(self, filepath, track):
+        audio = MP3(filepath, ID3=ID3)
+        
+        try:
+            audio.add_tags()
+        except:
+            pass
+
+        audio.tags.add(TIT2(encoding=3, text=track.title))
+        audio.tags.add(TPE1(encoding=3, text=track.artists.split(", ")))
+        audio.tags.add(TALB(encoding=3, text=track.album))
+        audio.tags.add(COMM(encoding=3, lang='eng', desc='Source', text='github.com/afkarxyz/SpotiDownloader'))
+
+        try:
+            if track.release_date:
+                try:
+                    release_date = datetime.strptime(track.release_date, "%Y-%m-%d")
+                    audio.tags.add(TDRC(encoding=3, text=track.release_date))
+                except ValueError:
+                    if track.release_date.isdigit():
+                        audio.tags.add(TDRC(encoding=3, text=track.release_date))
+        except Exception as e:
+            print(f"Error adding release date: {e}")
+
+        audio.tags.add(TRCK(encoding=3, text=str(track.track_number)))
+        audio.tags.add(TSRC(encoding=3, text=track.isrc))
+
+        if track.image_url:
+            try:
+                image_headers = {
+                    'Referer': 'https://spotidownloader.com/',
+                    'Origin': 'https://spotidownloader.com'
+                }
+                image_data = requests.get(track.image_url, headers=image_headers).content
+                audio.tags.add(APIC(
+                    encoding=3,
+                    mime='image/jpeg',
+                    type=3,
+                    desc='',
+                    data=image_data
+                ))
+            except Exception as e:
+                print(f"Error adding cover art: {e}")
+
+        audio.save()
+
+    def run(self):
+        try:
+            total_tracks = len(self.tracks)
+            
+            for i, track in enumerate(self.tracks):
+                while self.is_paused:
+                    if self.is_stopped:
+                        return
+                    self.msleep(100)
+                if self.is_stopped:
+                    return
+
+                self.progress.emit(f"Processing ({i+1}/{total_tracks}): {track.title} - {track.artists}", 
+                                int((i) / total_tracks * 100))
+                
+                success, error_message = self.download_track(track)
+                
+                if success:
+                    if error_message == "File already exists - skipped":
+                        self.progress.emit(f"Skipped (already exists): {track.title} - {track.artists}", 
+                                        int((i + 1) / total_tracks * 100))
+                    else:
+                        self.progress.emit(f"Successfully downloaded: {track.title} - {track.artists}", 
+                                        int((i + 1) / total_tracks * 100))
+                else:
+                    self.failed_tracks.append((track.title, track.artists, error_message))
+                    self.progress.emit(f"Failed to download: {track.title} - {track.artists}\nError: {error_message}", 
+                                    int((i + 1) / total_tracks * 100))
+
+            if not self.is_stopped:
+                success_message = "Download completed!"
+                if self.failed_tracks:
+                    success_message += f"\n\nFailed downloads: {len(self.failed_tracks)} tracks"
+                self.finished.emit(True, success_message, self.failed_tracks)
+                
+        except Exception as e:
+            self.finished.emit(False, str(e), self.failed_tracks)
+
+    def pause(self):
+        self.is_paused = True
+        self.progress.emit("Download process paused.", 0)
+
+    def resume(self):
+        self.is_paused = False
+        self.progress.emit("Download process resumed.", 0)
+
+    def stop(self): 
+        self.is_stopped = True
+        self.is_paused = False
+
 class UpdateDialog(QDialog):
     def __init__(self, current_version, new_version, parent=None):
         super().__init__(parent)
@@ -308,7 +489,7 @@ class UpdateDialog(QDialog):
 class SpotiDownloaderGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.current_version = "3.9" 
+        self.current_version = "4.0" 
         self.tracks = []
         self.album_or_playlist_name = ''
         self.reset_state()
@@ -324,6 +505,7 @@ class SpotiDownloaderGUI(QWidget):
         self.check_for_updates = self.settings.value('check_for_updates', True, type=bool)
         self.token_fetch_mode = self.settings.value('token_fetch_mode', 'fast')
         self.token_refresh_interval = self.settings.value('token_refresh_interval', 60000, type=int)
+        self.use_direct_download = self.settings.value('use_direct_download', False, type=bool)
         
         self.elapsed_time = QTime(0, 0, 0)
         self.timer = QTimer(self)
@@ -705,6 +887,12 @@ class SpotiDownloaderGUI(QWidget):
         self.slow_mode_radio.toggled.connect(self.save_fetch_mode)
         self.slow_mode_radio.setToolTip("Refresh token every 3 minutes")
 
+        self.direct_download_checkbox = QCheckBox('Direct Download')
+        self.direct_download_checkbox.setStyleSheet("color: palette(text);")
+        self.direct_download_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.direct_download_checkbox.toggled.connect(self.toggle_direct_download)
+        self.direct_download_checkbox.setToolTip("Download without using token")
+
         if self.token_fetch_mode == "slow":
             self.slow_mode_radio.setChecked(True)
         elif self.token_fetch_mode == "normal":
@@ -719,6 +907,7 @@ class SpotiDownloaderGUI(QWidget):
         auth_options_layout.addWidget(self.fast_mode_radio)
         auth_options_layout.addWidget(self.normal_mode_radio)
         auth_options_layout.addWidget(self.slow_mode_radio)
+        auth_options_layout.addWidget(self.direct_download_checkbox)
         auth_options_layout.addStretch()
         
         download_layout.addLayout(auth_options_layout)
@@ -726,6 +915,22 @@ class SpotiDownloaderGUI(QWidget):
         settings_layout.addStretch()
         settings_tab.setLayout(settings_layout)
         self.tab_widget.addTab(settings_tab, "Settings")
+        
+        self.direct_download_checkbox.setChecked(self.use_direct_download)
+        self.toggle_direct_download()
+        
+    def toggle_direct_download(self):
+        is_direct = self.direct_download_checkbox.isChecked()
+        self.token_label.setVisible(not is_direct)
+        self.token_input.setVisible(not is_direct)
+        self.fetch_token_btn.setVisible(not is_direct)
+        self.auto_token_checkbox.setEnabled(not is_direct)
+        self.fast_mode_radio.setEnabled(not is_direct)
+        self.normal_mode_radio.setEnabled(not is_direct)
+        self.slow_mode_radio.setEnabled(not is_direct)
+        
+        self.settings.setValue('use_direct_download', is_direct)
+        self.settings.sync()
         
     def setup_about_tab(self):
         about_tab = QWidget()
@@ -777,7 +982,7 @@ class SpotiDownloaderGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v3.9 | April 2025")
+        footer_label = QLabel("v4.0 | May 2025")
         footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -1171,7 +1376,7 @@ class SpotiDownloaderGUI(QWidget):
             self.log_output.append('Warning: Invalid output directory.')
             return
 
-        if not self.token_input.text().strip():
+        if not self.direct_download_checkbox.isChecked() and not self.token_input.text().strip():
             self.log_output.append("Error: Please enter your token")
             return
 
@@ -1188,21 +1393,35 @@ class SpotiDownloaderGUI(QWidget):
             self.log_output.append(f"Error: An error occurred while starting the download: {str(e)}")
 
     def start_download_worker(self, tracks_to_download, outpath):
-        token = self.token_input.text().strip()
+        if self.direct_download_checkbox.isChecked():
+            self.worker = DirectDownloadWorker(
+                self,
+                tracks_to_download, 
+                outpath,
+                self.is_single_track, 
+                self.is_album, 
+                self.is_playlist, 
+                self.album_or_playlist_name,
+                self.filename_format,
+                self.use_track_numbers,
+                self.use_album_subfolders
+            )
+        else:
+            token = self.token_input.text().strip()
+            self.worker = DownloadWorker(
+                self,
+                tracks_to_download, 
+                outpath, 
+                token,
+                self.is_single_track, 
+                self.is_album, 
+                self.is_playlist, 
+                self.album_or_playlist_name,
+                self.filename_format,
+                self.use_track_numbers,
+                self.use_album_subfolders
+            )
         
-        self.worker = DownloadWorker(
-            self,
-            tracks_to_download, 
-            outpath, 
-            token,
-            self.is_single_track, 
-            self.is_album, 
-            self.is_playlist, 
-            self.album_or_playlist_name,
-            self.filename_format,
-            self.use_track_numbers,
-            self.use_album_subfolders
-        )
         self.worker.finished.connect(self.on_download_finished)
         self.worker.progress.connect(self.update_progress)
         
