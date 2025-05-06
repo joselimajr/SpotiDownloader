@@ -11,7 +11,7 @@
 #
 
 > [!Important]
-> Requires **Google Chrome, Chromium, Microsoft Edge,** or **Brave** to obtain the token.
+Requires **Google Chrome, Chromium, Microsoft Edge,** or **Brave** to obtain the token.
 
 ## Screenshots
 
