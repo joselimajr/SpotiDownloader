@@ -489,7 +489,7 @@ class UpdateDialog(QDialog):
 class SpotiDownloaderGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.current_version = "4.0" 
+        self.current_version = "4.1" 
         self.tracks = []
         self.album_or_playlist_name = ''
         self.reset_state()
@@ -775,7 +775,7 @@ class SpotiDownloaderGUI(QWidget):
         output_layout.setSpacing(5)
         
         output_label = QLabel('Output Directory')
-        output_label.setStyleSheet("font-weight: bold; color: palette(text);")
+        output_label.setStyleSheet("font-weight: bold;")
         output_layout.addWidget(output_label)
         
         output_dir_layout = QHBoxLayout()
@@ -798,21 +798,18 @@ class SpotiDownloaderGUI(QWidget):
         file_layout.setSpacing(5)
         
         file_label = QLabel('File Settings')
-        file_label.setStyleSheet("font-weight: bold; color: palette(text);")
+        file_label.setStyleSheet("font-weight: bold;")
         file_layout.addWidget(file_label)
         
         format_layout = QHBoxLayout()
         format_label = QLabel('Filename Format:')
-        format_label.setStyleSheet("color: palette(text);")
         
         self.format_group = QButtonGroup(self)
         self.title_artist_radio = QRadioButton('Title - Artist')
-        self.title_artist_radio.setStyleSheet("color: palette(text);")
         self.title_artist_radio.setCursor(Qt.CursorShape.PointingHandCursor)
         self.title_artist_radio.toggled.connect(self.save_filename_format)
         
         self.artist_title_radio = QRadioButton('Artist - Title')
-        self.artist_title_radio.setStyleSheet("color: palette(text);")
         self.artist_title_radio.setCursor(Qt.CursorShape.PointingHandCursor)
         self.artist_title_radio.toggled.connect(self.save_filename_format)
         
@@ -833,14 +830,12 @@ class SpotiDownloaderGUI(QWidget):
         checkbox_layout = QHBoxLayout()
         
         self.track_number_checkbox = QCheckBox('Add Track Numbers to Album Files')
-        self.track_number_checkbox.setStyleSheet("color: palette(text);")
         self.track_number_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
         self.track_number_checkbox.setChecked(self.use_track_numbers)
         self.track_number_checkbox.toggled.connect(self.save_track_numbering)
         checkbox_layout.addWidget(self.track_number_checkbox)
         
         self.album_subfolder_checkbox = QCheckBox('Create Album Subfolders for Playlist Downloads')
-        self.album_subfolder_checkbox.setStyleSheet("color: palette(text);")
         self.album_subfolder_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
         self.album_subfolder_checkbox.setChecked(self.use_album_subfolders)
         self.album_subfolder_checkbox.toggled.connect(self.save_album_subfolder_setting)
@@ -856,13 +851,12 @@ class SpotiDownloaderGUI(QWidget):
         download_layout.setSpacing(5)
         
         download_label = QLabel('Authentication')
-        download_label.setStyleSheet("font-weight: bold; color: palette(text);")
+        download_label.setStyleSheet("font-weight: bold;")
         download_layout.addWidget(download_label)
         
         auth_options_layout = QHBoxLayout()
         
         self.auto_token_checkbox = QCheckBox('Auto Refresh Token')
-        self.auto_token_checkbox.setStyleSheet("color: palette(text);")
         self.auto_token_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
         self.auto_token_checkbox.setChecked(self.settings.value('auto_refresh_fetch', False, type=bool))
         self.auto_token_checkbox.toggled.connect(self.save_auto_token_setting)
@@ -870,25 +864,21 @@ class SpotiDownloaderGUI(QWidget):
 
         self.fetch_mode_group = QButtonGroup(self)
         self.fast_mode_radio = QRadioButton('Fast')
-        self.fast_mode_radio.setStyleSheet("color: palette(text);")
         self.fast_mode_radio.setCursor(Qt.CursorShape.PointingHandCursor)
         self.fast_mode_radio.toggled.connect(self.save_fetch_mode)
         self.fast_mode_radio.setToolTip("Refresh token every 1 minute")
 
         self.normal_mode_radio = QRadioButton('Normal')
-        self.normal_mode_radio.setStyleSheet("color: palette(text);")
         self.normal_mode_radio.setCursor(Qt.CursorShape.PointingHandCursor)
         self.normal_mode_radio.toggled.connect(self.save_fetch_mode)
         self.normal_mode_radio.setToolTip("Refresh token every 2 minutes")
 
         self.slow_mode_radio = QRadioButton('Slow')
-        self.slow_mode_radio.setStyleSheet("color: palette(text);")
         self.slow_mode_radio.setCursor(Qt.CursorShape.PointingHandCursor)
         self.slow_mode_radio.toggled.connect(self.save_fetch_mode)
         self.slow_mode_radio.setToolTip("Refresh token every 3 minutes")
 
         self.direct_download_checkbox = QCheckBox('Direct Download')
-        self.direct_download_checkbox.setStyleSheet("color: palette(text);")
         self.direct_download_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
         self.direct_download_checkbox.toggled.connect(self.toggle_direct_download)
         self.direct_download_checkbox.setToolTip("Download without using token")
@@ -982,8 +972,8 @@ class SpotiDownloaderGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v4.0 | May 2025")
-        footer_label.setStyleSheet("font-size: 12px; color: palette(text); margin-top: 10px;")
+        footer_label = QLabel("v4.1 | June 2025")
+        footer_label.setStyleSheet("font-size: 12px; margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         about_tab.setLayout(about_layout)
