@@ -23,7 +23,5 @@ Requires **Google Chrome, Chromium, Microsoft Edge,** or **Brave** to obtain the
 
 ![image](https://github.com/user-attachments/assets/07247a0e-cc28-49a3-95aa-833063c2037d)
 
-![image](https://github.com/user-attachments/assets/b6a56237-6e5c-4be0-8dea-09ecac47657b)
+![image](https://github.com/user-attachments/assets/faaa910f-a901-47b1-aebd-7ecaf99b4539)
 
-> [!Note]
-The **Direct Download** option may not work reliably, as it uses the spotidownloader.com API without a token.
