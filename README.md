@@ -23,5 +23,4 @@ Requires **Google Chrome, Chromium, Microsoft Edge,** or **Brave** to obtain the
 
 ![image](https://github.com/user-attachments/assets/07247a0e-cc28-49a3-95aa-833063c2037d)
 
-![image](https://github.com/user-attachments/assets/faaa910f-a901-47b1-aebd-7ecaf99b4539)
-
+![image](https://github.com/user-attachments/assets/73e80b9a-7be7-4bf8-b4af-9169ac40ed05)
