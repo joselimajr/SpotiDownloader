@@ -312,8 +312,9 @@ class UpdateDialog(QDialog):
 class SpotiDownloaderGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.current_version = "4.6" 
+        self.current_version = "4.7" 
         self.tracks = []
+        self.all_tracks = []  
         self.album_or_playlist_name = ''
         self.reset_state()
         
@@ -373,6 +374,7 @@ class SpotiDownloaderGUI(QWidget):
     
     def reset_state(self):
         self.tracks.clear()
+        self.all_tracks.clear()
         self.is_album = False
         self.is_playlist = False 
         self.is_single_track = False
@@ -388,11 +390,15 @@ class SpotiDownloaderGUI(QWidget):
         self.pause_resume_btn.setText('Pause')
         self.reset_info_widget()
         self.hide_track_buttons()
+        if hasattr(self, 'search_input'):
+            self.search_input.clear()
+        if hasattr(self, 'search_widget'):
+            self.search_widget.hide()
 
     def initUI(self):
         self.setWindowTitle('SpotiDownloader')
         self.setFixedWidth(650)
-        self.setFixedHeight(370)
+        self.setMinimumHeight(370)  
         
         icon_path = os.path.join(os.path.dirname(__file__), "icon.svg")
         if os.path.exists(icon_path):
@@ -449,6 +455,27 @@ class SpotiDownloaderGUI(QWidget):
         
         self.main_layout.addLayout(spotify_layout)
         
+    def filter_tracks(self):
+        search_text = self.search_input.text().lower().strip()
+        
+        if not search_text:
+            self.tracks = self.all_tracks.copy()
+        else:
+            self.tracks = [
+                track for track in self.all_tracks
+                if (search_text in track.title.lower() or 
+                    search_text in track.artists.lower() or 
+                    search_text in track.album.lower())
+            ]
+        
+        self.update_track_list_display()
+
+    def update_track_list_display(self):
+        self.track_list.clear()
+        for i, track in enumerate(self.tracks, 1):
+            duration = self.format_duration(track.duration_ms)
+            self.track_list.addItem(f"{i}. {track.title} - {track.artists} • {duration}")
+
     def browse_output(self):
         directory = QFileDialog.getExistingDirectory(self, "Select Output Directory")
         if directory:
@@ -517,9 +544,36 @@ class SpotiDownloaderGUI(QWidget):
         text_info_layout.addStretch()
 
         info_layout.addLayout(text_info_layout, 1)
+        
+        self.setup_search_widget()
+        info_layout.addWidget(self.search_widget)
+        
         self.info_widget.setLayout(info_layout)
         self.info_widget.setFixedHeight(100)
         self.info_widget.hide()
+
+    def setup_search_widget(self):
+        self.search_widget = QWidget()
+        search_layout = QVBoxLayout()
+        search_layout.setContentsMargins(10, 0, 0, 0)
+        
+        search_layout.addStretch()
+        
+        search_input_layout = QHBoxLayout()
+        search_input_layout.addStretch()  
+        
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search tracks...")
+        self.search_input.setClearButtonEnabled(True)
+        self.search_input.textChanged.connect(self.filter_tracks)
+        self.search_input.setFixedWidth(250)  
+        
+        
+        search_input_layout.addWidget(self.search_input)
+        search_layout.addLayout(search_input_layout)
+        
+        self.search_widget.setLayout(search_layout)
+        self.search_widget.hide()  
 
     def setup_track_buttons(self):
         self.btn_layout = QHBoxLayout()
@@ -780,7 +834,7 @@ class SpotiDownloaderGUI(QWidget):
                 spacer = QSpacerItem(20, 6, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
                 about_layout.addItem(spacer)
 
-        footer_label = QLabel("v4.6 | July 2025")
+        footer_label = QLabel("v4.7 | July 2025")
         footer_label.setStyleSheet("font-size: 12px; margin-top: 10px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -967,7 +1021,7 @@ class SpotiDownloaderGUI(QWidget):
         self.fetch_btn.setEnabled(True)
 
     def handle_track_metadata(self, track_data):
-        self.tracks = [Track(
+        track = Track(
             id=track_data["id"],
             title=track_data["name"],
             artists=track_data["artists"],
@@ -977,7 +1031,10 @@ class SpotiDownloaderGUI(QWidget):
             isrc=track_data.get("isrc", ""),
             image_url=track_data.get("images", ""),
             release_date=track_data.get("release_date", "")
-        )]
+        )
+        
+        self.tracks = [track]
+        self.all_tracks = [track]
         self.is_single_track = True
         self.is_album = self.is_playlist = False
         self.album_or_playlist_name = f"{self.tracks[0].title} - {self.tracks[0].artists}"
@@ -1008,7 +1065,8 @@ class SpotiDownloaderGUI(QWidget):
                 image_url=track.get("images", ""),
                 release_date=track.get("release_date", "")
             ))
-            
+        
+        self.all_tracks = self.tracks.copy()
         self.is_album = True
         self.is_playlist = self.is_single_track = False
         
@@ -1038,7 +1096,8 @@ class SpotiDownloaderGUI(QWidget):
                 image_url=track.get("images", ""),
                 release_date=track.get("release_date", "")
             ))
-            
+        
+        self.all_tracks = self.tracks.copy()
         self.is_playlist = True
         self.is_album = self.is_single_track = False
         
@@ -1055,10 +1114,10 @@ class SpotiDownloaderGUI(QWidget):
         self.track_list.setVisible(not self.is_single_track)
         
         if not self.is_single_track:
-            self.track_list.clear()
-            for i, track in enumerate(self.tracks, 1):
-                duration = self.format_duration(track.duration_ms)
-                self.track_list.addItem(f"{i}. {track.title} - {track.artists} • {duration}")
+            self.search_widget.show()
+            self.update_track_list_display()
+        else:
+            self.search_widget.hide()
         
         self.update_info_widget(metadata)
 
@@ -1164,13 +1223,14 @@ class SpotiDownloaderGUI(QWidget):
             if not selected_items:
                 self.log_output.append('Warning: Please select tracks to download.')
                 return
-            self.download_tracks([self.track_list.row(item) for item in selected_items])
+            selected_indices = [self.track_list.row(item) for item in selected_items]
+            self.download_tracks(selected_indices)
 
     def download_all(self):
         if self.is_single_track:
             self.download_tracks([0])
         else:
-            self.download_tracks(range(self.track_list.count()))
+            self.download_tracks(range(len(self.tracks)))
 
     def download_tracks(self, indices):
         self.log_output.clear()
@@ -1277,21 +1337,22 @@ class SpotiDownloaderGUI(QWidget):
 
     def remove_selected_tracks(self):
         if not self.is_single_track:
-            selected_indices = sorted([self.track_list.row(item) for item in self.track_list.selectedItems()], reverse=True)
+            selected_items = self.track_list.selectedItems()
+            selected_indices = [self.track_list.row(item) for item in selected_items]
             
-            for index in selected_indices:
-                self.track_list.takeItem(index)
-                self.tracks.pop(index)
+            tracks_to_remove = [self.tracks[i] for i in selected_indices]
             
-            for i, track in enumerate(self.tracks, 1):
-                if self.is_playlist:
+            for track in tracks_to_remove:
+                if track in self.tracks:
+                    self.tracks.remove(track)
+                if track in self.all_tracks:
+                    self.all_tracks.remove(track)
+            
+            if self.is_playlist:
+                for i, track in enumerate(self.all_tracks, 1):
                     track.track_number = i
-                
-                duration = self.format_duration(track.duration_ms)
-                display_text = f"{i}. {track.title} - {track.artists} • {duration}"
-                list_item = self.track_list.item(i - 1)
-                if list_item:
-                    list_item.setText(display_text)
+            
+            self.update_track_list_display()
 
     def clear_tracks(self):
         self.reset_state()
