@@ -86,7 +86,7 @@ class DownloadWorker(QThread):
     
     def __init__(self, parent, tracks, outpath, token, is_single_track=False, is_album=False, is_playlist=False, 
                  album_or_playlist_name='', filename_format='title_artist', use_track_numbers=True,
-                 use_album_subfolders=False):
+                 use_artist_subfolders=False, use_album_subfolders=False):
         super().__init__()
         self.parent = parent
         self.tracks = tracks
@@ -98,6 +98,7 @@ class DownloadWorker(QThread):
         self.album_or_playlist_name = album_or_playlist_name
         self.filename_format = filename_format
         self.use_track_numbers = use_track_numbers
+        self.use_artist_subfolders = use_artist_subfolders
         self.use_album_subfolders = use_album_subfolders
         self.is_paused = False
         self.is_stopped = False
@@ -134,14 +135,23 @@ class DownloadWorker(QThread):
         try:
             filename = self.get_formatted_filename(track)
             
-            if self.is_playlist and self.use_album_subfolders:
-                album_folder = re.sub(r'[<>:"/\\|?*]', '_', track.album)
-                outpath = os.path.join(self.outpath, album_folder)
+            if self.is_playlist:
+                outpath = self.outpath
+                
+                if self.use_artist_subfolders:
+                    artist_name = track.artists.split(', ')[0] if ', ' in track.artists else track.artists
+                    artist_folder = re.sub(r'[<>:"/\\|?*]', lambda m: "'" if m.group() == '"' else '_', artist_name)
+                    outpath = os.path.join(outpath, artist_folder)
+                
+                if self.use_album_subfolders:
+                    album_folder = re.sub(r'[<>:"/\\|?*]', lambda m: "'" if m.group() == '"' else '_', track.album)
+                    outpath = os.path.join(outpath, album_folder)
+                
                 os.makedirs(outpath, exist_ok=True)
             else:
                 outpath = self.outpath
 
-            if (self.is_album or (self.is_playlist and self.use_album_subfolders)) and self.use_track_numbers:
+            if (self.is_album or self.is_playlist) and self.use_track_numbers:
                 filename = f"{track.track_number:02d} - {filename}"
         
             filepath = os.path.join(outpath, filename)
@@ -268,13 +278,21 @@ class DownloadWorker(QThread):
         for track in self.tracks:
             filename = self.get_formatted_filename(track)
             
-            if self.is_playlist and self.use_album_subfolders:
-                album_folder = re.sub(r'[<>:"/\\|?*]', '_', track.album)
-                outpath = os.path.join(self.outpath, album_folder)
+            if self.is_playlist:
+                outpath = self.outpath
+                
+                if self.use_artist_subfolders:
+                    artist_name = track.artists.split(', ')[0] if ', ' in track.artists else track.artists
+                    artist_folder = re.sub(r'[<>:"/\\|?*]', lambda m: "'" if m.group() == '"' else '_', artist_name)
+                    outpath = os.path.join(outpath, artist_folder)
+                
+                if self.use_album_subfolders:
+                    album_folder = re.sub(r'[<>:"/\\|?*]', lambda m: "'" if m.group() == '"' else '_', track.album)
+                    outpath = os.path.join(outpath, album_folder)
             else:
                 outpath = self.outpath
 
-            if (self.is_album or (self.is_playlist and self.use_album_subfolders)) and self.use_track_numbers:
+            if (self.is_album or self.is_playlist) and self.use_track_numbers:
                 filename = f"{track.track_number:02d} - {filename}"
         
             filepath = os.path.join(outpath, filename)
@@ -370,7 +388,7 @@ class UpdateDialog(QDialog):
 class SpotiDownloaderGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.current_version = "4.9" 
+        self.current_version = "5.0" 
         self.tracks = []
         self.all_tracks = []  
         self.album_or_playlist_name = ''
@@ -382,6 +400,7 @@ class SpotiDownloaderGUI(QWidget):
         self.last_token = self.settings.value('spotify_token', '')
         self.filename_format = self.settings.value('filename_format', 'title_artist')
         self.use_track_numbers = self.settings.value('use_track_numbers', False, type=bool)
+        self.use_artist_subfolders = self.settings.value('use_artist_subfolders', False, type=bool)
         self.use_album_subfolders = self.settings.value('use_album_subfolders', False, type=bool)
         self.auto_refresh_fetch = self.settings.value('auto_refresh_fetch', True, type=bool)
         self.check_for_updates = self.settings.value('check_for_updates', True, type=bool)
@@ -628,7 +647,6 @@ class SpotiDownloaderGUI(QWidget):
         self.search_input.textChanged.connect(self.filter_tracks)
         self.search_input.setFixedWidth(250)  
         
-        
         search_input_layout.addWidget(self.search_input)
         search_layout.addLayout(search_input_layout)
         
@@ -804,17 +822,23 @@ class SpotiDownloaderGUI(QWidget):
 
         checkbox_layout = QHBoxLayout()
         
-        self.track_number_checkbox = QCheckBox('Add Track Numbers to Album Files')
-        self.track_number_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.track_number_checkbox.setChecked(self.use_track_numbers)
-        self.track_number_checkbox.toggled.connect(self.save_track_numbering)
-        checkbox_layout.addWidget(self.track_number_checkbox)
+        self.artist_subfolder_checkbox = QCheckBox('Artist Subfolder (Playlist)')
+        self.artist_subfolder_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.artist_subfolder_checkbox.setChecked(self.use_artist_subfolders)
+        self.artist_subfolder_checkbox.toggled.connect(self.save_artist_subfolder_setting)
+        checkbox_layout.addWidget(self.artist_subfolder_checkbox)
         
-        self.album_subfolder_checkbox = QCheckBox('Create Album Subfolders for Playlist Downloads')
+        self.album_subfolder_checkbox = QCheckBox('Album Subfolder (Playlist)')
         self.album_subfolder_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
         self.album_subfolder_checkbox.setChecked(self.use_album_subfolders)
         self.album_subfolder_checkbox.toggled.connect(self.save_album_subfolder_setting)
         checkbox_layout.addWidget(self.album_subfolder_checkbox)
+        
+        self.track_number_checkbox = QCheckBox('Track Number for Album')
+        self.track_number_checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.track_number_checkbox.setChecked(self.use_track_numbers)
+        self.track_number_checkbox.toggled.connect(self.save_track_numbering)
+        checkbox_layout.addWidget(self.track_number_checkbox)
         
         checkbox_layout.addStretch()
         file_layout.addLayout(checkbox_layout)
@@ -1077,7 +1101,7 @@ class SpotiDownloaderGUI(QWidget):
 
             about_layout.addWidget(section_widget)
 
-        footer_label = QLabel(f"v{self.current_version} | July 2025")
+        footer_label = QLabel(f"v{self.current_version} | August 2025")
         footer_label.setStyleSheet("font-size: 12px; margin-top: 20px;")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
@@ -1106,6 +1130,11 @@ class SpotiDownloaderGUI(QWidget):
     def save_track_numbering(self):
         self.use_track_numbers = self.track_number_checkbox.isChecked()
         self.settings.setValue('use_track_numbers', self.use_track_numbers)
+        self.settings.sync()
+        
+    def save_artist_subfolder_setting(self):
+        self.use_artist_subfolders = self.artist_subfolder_checkbox.isChecked()
+        self.settings.setValue('use_artist_subfolders', self.use_artist_subfolders)
         self.settings.sync()
         
     def save_album_subfolder_setting(self):
@@ -1333,7 +1362,7 @@ class SpotiDownloaderGUI(QWidget):
                 title=track["name"],
                 artists=track["artists"],
                 album=track["album_name"],
-                track_number=len(self.tracks) + 1,
+                track_number=track.get("track_number", len(self.tracks) + 1),
                 duration_ms=track.get("duration_ms", 0),
                 isrc=track.get("isrc", ""),
                 image_url=track.get("images", ""),
@@ -1523,6 +1552,7 @@ class SpotiDownloaderGUI(QWidget):
             self.album_or_playlist_name,
             self.filename_format,
             self.use_track_numbers,
+            self.use_artist_subfolders,
             self.use_album_subfolders
         )
         
