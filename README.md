@@ -20,3 +20,5 @@ Requires a **Chromium-based browser** like Chrome or Edge to obtain the token.
 ![image](https://github.com/user-attachments/assets/cfa0c800-009b-47ac-89db-5eb8ef48f09a)
 
 ![image](https://github.com/user-attachments/assets/98a36d7b-5a13-49f2-8a7c-c2143d85269c)
+
+![image](https://github.com/user-attachments/assets/b7c8e77d-c442-4d23-aded-94e658b702aa)
