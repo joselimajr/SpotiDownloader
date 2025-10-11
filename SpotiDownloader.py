@@ -388,7 +388,7 @@ class UpdateDialog(QDialog):
 class SpotiDownloaderGUI(QWidget):
     def __init__(self):
         super().__init__()
-        self.current_version = "5.2" 
+        self.current_version = "5.3" 
         self.tracks = []
         self.all_tracks = []  
         self.album_or_playlist_name = ''
@@ -1224,7 +1224,7 @@ class SpotiDownloaderGUI(QWidget):
 
             about_layout.addWidget(section_widget)
 
-        footer_label = QLabel(f"v{self.current_version} | September 2025")
+        footer_label = QLabel(f"v{self.current_version} | October 2025")
         about_layout.addWidget(footer_label, alignment=Qt.AlignmentFlag.AlignCenter)
 
         about_tab.setLayout(about_layout)
