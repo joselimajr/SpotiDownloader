@@ -21,11 +21,11 @@ def get_session_token_sync(max_wait=30):
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
-            'Origin': 'https://spotidownloader.com',
+            # 'Origin': 'https://spotidownloader.com',
             'Referer': 'https://spotidownloader.com/'
         }
 
-        r = requests.post("https://api.spotidownloader.com/session")
+        r = requests.post("https://api.spotidownloader.com/session", headers=custom_headers)
 
         if r.status_code != 200:
             print("Failed to initiate session request.")
