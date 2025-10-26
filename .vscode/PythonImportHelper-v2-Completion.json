@@ -1,0 +1,1001 @@
+[
+    {
+        "label": "time",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "time",
+        "description": "time",
+        "detail": "time",
+        "documentation": {}
+    },
+    {
+        "label": "sleep",
+        "importPath": "time",
+        "description": "time",
+        "isExtraImport": true,
+        "detail": "time",
+        "documentation": {}
+    },
+    {
+        "label": "ChromiumPage",
+        "importPath": "DrissionPage",
+        "description": "DrissionPage",
+        "isExtraImport": true,
+        "detail": "DrissionPage",
+        "documentation": {}
+    },
+    {
+        "label": "ChromiumPage",
+        "importPath": "DrissionPage",
+        "description": "DrissionPage",
+        "isExtraImport": true,
+        "detail": "DrissionPage",
+        "documentation": {}
+    },
+    {
+        "label": "ChromiumOptions",
+        "importPath": "DrissionPage",
+        "description": "DrissionPage",
+        "isExtraImport": true,
+        "detail": "DrissionPage",
+        "documentation": {}
+    },
+    {
+        "label": "ChromiumPage",
+        "importPath": "DrissionPage",
+        "description": "DrissionPage",
+        "isExtraImport": true,
+        "detail": "DrissionPage",
+        "documentation": {}
+    },
+    {
+        "label": "urlparse",
+        "importPath": "urllib.parse",
+        "description": "urllib.parse",
+        "isExtraImport": true,
+        "detail": "urllib.parse",
+        "documentation": {}
+    },
+    {
+        "label": "parse_qs",
+        "importPath": "urllib.parse",
+        "description": "urllib.parse",
+        "isExtraImport": true,
+        "detail": "urllib.parse",
+        "documentation": {}
+    },
+    {
+        "label": "Path",
+        "importPath": "pathlib",
+        "description": "pathlib",
+        "isExtraImport": true,
+        "detail": "pathlib",
+        "documentation": {}
+    },
+    {
+        "label": "Path",
+        "importPath": "pathlib",
+        "description": "pathlib",
+        "isExtraImport": true,
+        "detail": "pathlib",
+        "documentation": {}
+    },
+    {
+        "label": "Path",
+        "importPath": "pathlib",
+        "description": "pathlib",
+        "isExtraImport": true,
+        "detail": "pathlib",
+        "documentation": {}
+    },
+    {
+        "label": "requests",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "requests",
+        "description": "requests",
+        "detail": "requests",
+        "documentation": {}
+    },
+    {
+        "label": "json",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "json",
+        "description": "json",
+        "detail": "json",
+        "documentation": {}
+    },
+    {
+        "label": "pyotp",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "pyotp",
+        "description": "pyotp",
+        "detail": "pyotp",
+        "documentation": {}
+    },
+    {
+        "label": "base64",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "base64",
+        "description": "base64",
+        "detail": "base64",
+        "documentation": {}
+    },
+    {
+        "label": "randrange",
+        "importPath": "random",
+        "description": "random",
+        "isExtraImport": true,
+        "detail": "random",
+        "documentation": {}
+    },
+    {
+        "label": "Dict",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Any",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "List",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "Tuple",
+        "importPath": "typing",
+        "description": "typing",
+        "isExtraImport": true,
+        "detail": "typing",
+        "documentation": {}
+    },
+    {
+        "label": "CloudflareBypasser",
+        "importPath": "CloudflareBypasser",
+        "description": "CloudflareBypasser",
+        "isExtraImport": true,
+        "detail": "CloudflareBypasser",
+        "documentation": {}
+    },
+    {
+        "label": "sys",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "sys",
+        "description": "sys",
+        "detail": "sys",
+        "documentation": {}
+    },
+    {
+        "label": "os",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "os",
+        "description": "os",
+        "detail": "os",
+        "documentation": {}
+    },
+    {
+        "label": "dataclass",
+        "importPath": "dataclasses",
+        "description": "dataclasses",
+        "isExtraImport": true,
+        "detail": "dataclasses",
+        "documentation": {}
+    },
+    {
+        "label": "datetime",
+        "importPath": "datetime",
+        "description": "datetime",
+        "isExtraImport": true,
+        "detail": "datetime",
+        "documentation": {}
+    },
+    {
+        "label": "re",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "re",
+        "description": "re",
+        "detail": "re",
+        "documentation": {}
+    },
+    {
+        "label": "asyncio",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "asyncio",
+        "description": "asyncio",
+        "detail": "asyncio",
+        "documentation": {}
+    },
+    {
+        "label": "version",
+        "importPath": "packaging",
+        "description": "packaging",
+        "isExtraImport": true,
+        "detail": "packaging",
+        "documentation": {}
+    },
+    {
+        "label": "qdarktheme",
+        "kind": 6,
+        "isExtraImport": true,
+        "importPath": "qdarktheme",
+        "description": "qdarktheme",
+        "detail": "qdarktheme",
+        "documentation": {}
+    },
+    {
+        "label": "MP3",
+        "importPath": "mutagen.mp3",
+        "description": "mutagen.mp3",
+        "isExtraImport": true,
+        "detail": "mutagen.mp3",
+        "documentation": {}
+    },
+    {
+        "label": "ID3",
+        "importPath": "mutagen.id3",
+        "description": "mutagen.id3",
+        "isExtraImport": true,
+        "detail": "mutagen.id3",
+        "documentation": {}
+    },
+    {
+        "label": "APIC",
+        "importPath": "mutagen.id3",
+        "description": "mutagen.id3",
+        "isExtraImport": true,
+        "detail": "mutagen.id3",
+        "documentation": {}
+    },
+    {
+        "label": "TIT2",
+        "importPath": "mutagen.id3",
+        "description": "mutagen.id3",
+        "isExtraImport": true,
+        "detail": "mutagen.id3",
+        "documentation": {}
+    },
+    {
+        "label": "TPE1",
+        "importPath": "mutagen.id3",
+        "description": "mutagen.id3",
+        "isExtraImport": true,
+        "detail": "mutagen.id3",
+        "documentation": {}
+    },
+    {
+        "label": "TALB",
+        "importPath": "mutagen.id3",
+        "description": "mutagen.id3",
+        "isExtraImport": true,
+        "detail": "mutagen.id3",
+        "documentation": {}
+    },
+    {
+        "label": "TDRC",
+        "importPath": "mutagen.id3",
+        "description": "mutagen.id3",
+        "isExtraImport": true,
+        "detail": "mutagen.id3",
+        "documentation": {}
+    },
+    {
+        "label": "TRCK",
+        "importPath": "mutagen.id3",
+        "description": "mutagen.id3",
+        "isExtraImport": true,
+        "detail": "mutagen.id3",
+        "documentation": {}
+    },
+    {
+        "label": "TSRC",
+        "importPath": "mutagen.id3",
+        "description": "mutagen.id3",
+        "isExtraImport": true,
+        "detail": "mutagen.id3",
+        "documentation": {}
+    },
+    {
+        "label": "COMM",
+        "importPath": "mutagen.id3",
+        "description": "mutagen.id3",
+        "isExtraImport": true,
+        "detail": "mutagen.id3",
+        "documentation": {}
+    },
+    {
+        "label": "QApplication",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QWidget",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QVBoxLayout",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QHBoxLayout",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QPushButton",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QLineEdit",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QLabel",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QFileDialog",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QListWidget",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QTextEdit",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QTabWidget",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QButtonGroup",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QRadioButton",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QAbstractItemView",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QProgressBar",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QCheckBox",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QDialog",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QDialogButtonBox",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QComboBox",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "QMessageBox",
+        "importPath": "PyQt6.QtWidgets",
+        "description": "PyQt6.QtWidgets",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtWidgets",
+        "documentation": {}
+    },
+    {
+        "label": "Qt",
+        "importPath": "PyQt6.QtCore",
+        "description": "PyQt6.QtCore",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "QThread",
+        "importPath": "PyQt6.QtCore",
+        "description": "PyQt6.QtCore",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "pyqtSignal",
+        "importPath": "PyQt6.QtCore",
+        "description": "PyQt6.QtCore",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "QUrl",
+        "importPath": "PyQt6.QtCore",
+        "description": "PyQt6.QtCore",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "QTimer",
+        "importPath": "PyQt6.QtCore",
+        "description": "PyQt6.QtCore",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "QTime",
+        "importPath": "PyQt6.QtCore",
+        "description": "PyQt6.QtCore",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "QSettings",
+        "importPath": "PyQt6.QtCore",
+        "description": "PyQt6.QtCore",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "QByteArray",
+        "importPath": "PyQt6.QtCore",
+        "description": "PyQt6.QtCore",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtCore",
+        "documentation": {}
+    },
+    {
+        "label": "QIcon",
+        "importPath": "PyQt6.QtGui",
+        "description": "PyQt6.QtGui",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "QTextCursor",
+        "importPath": "PyQt6.QtGui",
+        "description": "PyQt6.QtGui",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "QDesktopServices",
+        "importPath": "PyQt6.QtGui",
+        "description": "PyQt6.QtGui",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "QPixmap",
+        "importPath": "PyQt6.QtGui",
+        "description": "PyQt6.QtGui",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "QPainter",
+        "importPath": "PyQt6.QtGui",
+        "description": "PyQt6.QtGui",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "QColor",
+        "importPath": "PyQt6.QtGui",
+        "description": "PyQt6.QtGui",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtGui",
+        "documentation": {}
+    },
+    {
+        "label": "QSvgRenderer",
+        "importPath": "PyQt6.QtSvg",
+        "description": "PyQt6.QtSvg",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtSvg",
+        "documentation": {}
+    },
+    {
+        "label": "QNetworkAccessManager",
+        "importPath": "PyQt6.QtNetwork",
+        "description": "PyQt6.QtNetwork",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtNetwork",
+        "documentation": {}
+    },
+    {
+        "label": "QNetworkRequest",
+        "importPath": "PyQt6.QtNetwork",
+        "description": "PyQt6.QtNetwork",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtNetwork",
+        "documentation": {}
+    },
+    {
+        "label": "QNetworkReply",
+        "importPath": "PyQt6.QtNetwork",
+        "description": "PyQt6.QtNetwork",
+        "isExtraImport": true,
+        "detail": "PyQt6.QtNetwork",
+        "documentation": {}
+    },
+    {
+        "label": "get_filtered_data",
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "isExtraImport": true,
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "parse_uri",
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "isExtraImport": true,
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "SpotifyInvalidUrlException",
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "isExtraImport": true,
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "scrape_and_save",
+        "importPath": "getSecret",
+        "description": "getSecret",
+        "isExtraImport": true,
+        "detail": "getSecret",
+        "documentation": {}
+    },
+    {
+        "label": "main",
+        "importPath": "getToken",
+        "description": "getToken",
+        "isExtraImport": true,
+        "detail": "getToken",
+        "documentation": {}
+    },
+    {
+        "label": "CloudflareBypasser",
+        "kind": 6,
+        "importPath": "CloudflareBypasser",
+        "description": "CloudflareBypasser",
+        "peekOfCode": "class CloudflareBypasser:\n    def __init__(self, driver: ChromiumPage, max_retries=-1, log=True):\n        self.driver = driver\n        self.max_retries = max_retries\n        self.log = log\n    def search_recursively_shadow_root_with_iframe(self,ele):\n        if ele.shadow_root:\n            if ele.shadow_root.child().tag == \"iframe\":\n                return ele.shadow_root.child()\n        else:",
+        "detail": "CloudflareBypasser",
+        "documentation": {}
+    },
+    {
+        "label": "SpotifyInvalidUrlException",
+        "kind": 6,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "class SpotifyInvalidUrlException(Exception):\n    pass\nclass SpotifyWebsiteParserException(Exception):\n    pass\ndef parse_uri(uri):\n    u = urlparse(uri)\n    if u.netloc == \"embed.spotify.com\":\n        if not u.query:\n            raise SpotifyInvalidUrlException(\"ERROR: url {} is not supported\".format(uri))\n        qs = parse_qs(u.query)",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "SpotifyWebsiteParserException",
+        "kind": 6,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "class SpotifyWebsiteParserException(Exception):\n    pass\ndef parse_uri(uri):\n    u = urlparse(uri)\n    if u.netloc == \"embed.spotify.com\":\n        if not u.query:\n            raise SpotifyInvalidUrlException(\"ERROR: url {} is not supported\".format(uri))\n        qs = parse_qs(u.query)\n        return parse_uri(qs['uri'][0])\n    if not u.scheme and not u.netloc:",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "get_random_user_agent",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def get_random_user_agent():\n    return f\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_{randrange(11, 15)}_{randrange(4, 9)}) AppleWebKit/{randrange(530, 537)}.{randrange(30, 37)} (KHTML, like Gecko) Chrome/{randrange(80, 105)}.0.{randrange(3000, 4500)}.{randrange(60, 125)} Safari/{randrange(530, 537)}.{randrange(30, 36)}\"\n# https://github.com/xyloflake/spot-secrets-go\ndef generate_totp():\n    local_path = Path.home() / \".spotify-secret\" / \"secretBytes.json\"\n    used_local = False\n    try:\n        url = \"https://raw.githubusercontent.com/afkarxyz/secretBytes/refs/heads/main/secrets/secretBytes.json\"\n        resp = requests.get(url, timeout=10)\n        if resp.status_code != 200:",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "generate_totp",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def generate_totp():\n    local_path = Path.home() / \".spotify-secret\" / \"secretBytes.json\"\n    used_local = False\n    try:\n        url = \"https://raw.githubusercontent.com/afkarxyz/secretBytes/refs/heads/main/secrets/secretBytes.json\"\n        resp = requests.get(url, timeout=10)\n        if resp.status_code != 200:\n            raise Exception(f\"GitHub fetch failed with status: {resp.status_code}\")\n        secrets_list = resp.json()\n    except Exception as github_error:",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "parse_uri",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def parse_uri(uri):\n    u = urlparse(uri)\n    if u.netloc == \"embed.spotify.com\":\n        if not u.query:\n            raise SpotifyInvalidUrlException(\"ERROR: url {} is not supported\".format(uri))\n        qs = parse_qs(u.query)\n        return parse_uri(qs['uri'][0])\n    if not u.scheme and not u.netloc:\n        return {\"type\": \"playlist\", \"id\": u.path}\n    if u.scheme == \"spotify\":",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "get_json_from_api",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def get_json_from_api(api_url, access_token):\n    headers.update({'Authorization': 'Bearer {}'.format(access_token)})\n    req = requests.get(api_url, headers=headers, timeout=10)\n    if req.status_code == 429:\n        seconds = int(req.headers.get(\"Retry-After\", \"5\")) + 1\n        print(f\"INFO: rate limited! Sleeping for {seconds} seconds\")\n        sleep(seconds)\n        return None\n    if req.status_code != 200:\n        raise SpotifyWebsiteParserException(f\"ERROR: {api_url} gave us not a 200. Instead: {req.status_code}\")",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "get_access_token",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def get_access_token():\n    try:\n        totp, server_time, totp_version = generate_totp()\n        otp_code = totp.at(int(server_time))\n        timestamp_ms = int(time.time() * 1000)\n        params = {\n            'reason': 'init',\n            'productType': 'web-player',\n            'totp': otp_code,\n            'totpServerTime': server_time,",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "fetch_tracks_in_batches",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def fetch_tracks_in_batches(url: str, access_token: str, batch_size: int = 100, delay: float = 1.0) -> Tuple[List[Dict[str, Any]], int]:\n    all_tracks = []\n    current_batch = 0\n    while url:\n        print(f\"Batch : {current_batch}\")\n        url_parts = url.split(\"offset=\")\n        if len(url_parts) > 1:\n            offset_part = url_parts[1].split(\"&\")[0]\n            print(f\"Offset : {offset_part}\")\n        print(\"-------------\")",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "get_raw_spotify_data",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def get_raw_spotify_data(spotify_url, batch: bool = False, delay: float = 1.0):\n    url_info = parse_uri(spotify_url)\n    token = get_access_token()\n    if \"error\" in token:\n        return token\n    access_token = token[\"accessToken\"]\n    raw_data = {}\n    if url_info['type'] == \"playlist\":\n        try:\n            playlist_data = get_json_from_api(",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "format_track_data",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def format_track_data(track_data):\n    artists = []\n    artist_ids = []\n    for artist in track_data.get('artists', []):\n        artists.append(artist['name'])\n        artist_ids.append(artist['id'])\n    image_url = track_data.get('album', {}).get('images', [{}])[0].get('url', '') if track_data.get('album', {}).get('images') else ''\n    return {\n        \"track\": {\n            \"id\": track_data.get('id', ''),",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "format_album_data",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def format_album_data(album_data):\n    artists = []\n    artist_ids = []\n    for artist in album_data.get('artists', []):\n        artists.append(artist['name'])\n        artist_ids.append(artist['id'])\n    image_url = album_data.get('images', [{}])[0].get('url', '') if album_data.get('images') else ''\n    track_list = []\n    for track in album_data.get('tracks', {}).get('items', []):\n        track_id = track.get('id', '')",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "format_playlist_data",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def format_playlist_data(playlist_data):\n    image_url = playlist_data.get('images', [{}])[0].get('url', '') if playlist_data.get('images') else ''\n    track_list = []\n    for item in playlist_data.get('tracks', {}).get('items', []):\n        track = item.get('track', {})\n        if not track:\n            continue\n        artists = []\n        artist_ids = []\n        for artist in track.get('artists', []):",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "format_artist_discography_data",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def format_artist_discography_data(discography_data):\n    artist_info = discography_data.get('artist_info', {})\n    albums = discography_data.get('albums', [])\n    access_token = discography_data.get('_token', '')\n    artist_image = ''\n    if artist_info.get('images'):\n        artist_image = artist_info.get('images', [{}])[0].get('url', '')\n    formatted_artist_info = {\n        \"id\": artist_info.get('id', ''),\n        \"uri\": artist_info.get('uri', ''),",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "format_artist_data",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def format_artist_data(artist_data):\n    artist_image = ''\n    if artist_data.get('images'):\n        artist_image = artist_data.get('images', [{}])[0].get('url', '')\n    return {\n        \"artist\": {\n            \"id\": artist_data.get('id', ''),\n            \"uri\": artist_data.get('uri', ''),\n            \"name\": artist_data.get('name', ''),\n            \"followers\": artist_data.get('followers', {}).get('total', 0),",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "process_spotify_data",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def process_spotify_data(raw_data, data_type):\n    if not raw_data or \"error\" in raw_data:\n        return {\"error\": \"Invalid data provided\"}\n    try:\n        if data_type == \"track\":\n            return format_track_data(raw_data)\n        elif data_type == \"album\":\n            return format_album_data(raw_data)\n        elif data_type == \"playlist\":\n            return format_playlist_data(raw_data)",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "get_filtered_data",
+        "kind": 2,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "def get_filtered_data(spotify_url, batch=False, delay=1.0):\n    raw_data = get_raw_spotify_data(spotify_url, batch=batch, delay=delay)\n    if raw_data and \"error\" not in raw_data:\n        url_info = parse_uri(spotify_url)\n        filtered_data = process_spotify_data(raw_data, url_info['type'])\n        return filtered_data\n    return {\"error\": \"Failed to get raw data\"}\nif __name__ == '__main__':\n    playlist = \"https://open.spotify.com/playlist/37i9dQZEVXbNG2KDcFcKOF\"\n    album = \"https://open.spotify.com/album/6J84szYCnMfzEcvIcfWMFL\"",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "token_url",
+        "kind": 5,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "token_url = 'https://open.spotify.com/api/token'\nplaylist_base_url = 'https://api.spotify.com/v1/playlists/{}'\nalbum_base_url = 'https://api.spotify.com/v1/albums/{}'\ntrack_base_url = 'https://api.spotify.com/v1/tracks/{}'\nartist_base_url = 'https://api.spotify.com/v1/artists/{}'\nartist_albums_url = 'https://api.spotify.com/v1/artists/{}/albums'\nheaders = {\n    'User-Agent': get_random_user_agent(),\n    'Accept': 'application/json',\n    'Accept-Language': 'en-US,en;q=0.9',",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "playlist_base_url",
+        "kind": 5,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "playlist_base_url = 'https://api.spotify.com/v1/playlists/{}'\nalbum_base_url = 'https://api.spotify.com/v1/albums/{}'\ntrack_base_url = 'https://api.spotify.com/v1/tracks/{}'\nartist_base_url = 'https://api.spotify.com/v1/artists/{}'\nartist_albums_url = 'https://api.spotify.com/v1/artists/{}/albums'\nheaders = {\n    'User-Agent': get_random_user_agent(),\n    'Accept': 'application/json',\n    'Accept-Language': 'en-US,en;q=0.9',\n    'Accept-Encoding': 'gzip, deflate, br',",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "album_base_url",
+        "kind": 5,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "album_base_url = 'https://api.spotify.com/v1/albums/{}'\ntrack_base_url = 'https://api.spotify.com/v1/tracks/{}'\nartist_base_url = 'https://api.spotify.com/v1/artists/{}'\nartist_albums_url = 'https://api.spotify.com/v1/artists/{}/albums'\nheaders = {\n    'User-Agent': get_random_user_agent(),\n    'Accept': 'application/json',\n    'Accept-Language': 'en-US,en;q=0.9',\n    'Accept-Encoding': 'gzip, deflate, br',\n    'sec-ch-ua-platform': '\"Windows\"',",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "track_base_url",
+        "kind": 5,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "track_base_url = 'https://api.spotify.com/v1/tracks/{}'\nartist_base_url = 'https://api.spotify.com/v1/artists/{}'\nartist_albums_url = 'https://api.spotify.com/v1/artists/{}/albums'\nheaders = {\n    'User-Agent': get_random_user_agent(),\n    'Accept': 'application/json',\n    'Accept-Language': 'en-US,en;q=0.9',\n    'Accept-Encoding': 'gzip, deflate, br',\n    'sec-ch-ua-platform': '\"Windows\"',\n    'sec-fetch-dest': 'empty',",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "artist_base_url",
+        "kind": 5,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "artist_base_url = 'https://api.spotify.com/v1/artists/{}'\nartist_albums_url = 'https://api.spotify.com/v1/artists/{}/albums'\nheaders = {\n    'User-Agent': get_random_user_agent(),\n    'Accept': 'application/json',\n    'Accept-Language': 'en-US,en;q=0.9',\n    'Accept-Encoding': 'gzip, deflate, br',\n    'sec-ch-ua-platform': '\"Windows\"',\n    'sec-fetch-dest': 'empty',\n    'sec-fetch-mode': 'cors',",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "artist_albums_url",
+        "kind": 5,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "artist_albums_url = 'https://api.spotify.com/v1/artists/{}/albums'\nheaders = {\n    'User-Agent': get_random_user_agent(),\n    'Accept': 'application/json',\n    'Accept-Language': 'en-US,en;q=0.9',\n    'Accept-Encoding': 'gzip, deflate, br',\n    'sec-ch-ua-platform': '\"Windows\"',\n    'sec-fetch-dest': 'empty',\n    'sec-fetch-mode': 'cors',\n    'sec-fetch-site': 'same-origin',",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "headers",
+        "kind": 5,
+        "importPath": "getMetadata",
+        "description": "getMetadata",
+        "peekOfCode": "headers = {\n    'User-Agent': get_random_user_agent(),\n    'Accept': 'application/json',\n    'Accept-Language': 'en-US,en;q=0.9',\n    'Accept-Encoding': 'gzip, deflate, br',\n    'sec-ch-ua-platform': '\"Windows\"',\n    'sec-fetch-dest': 'empty',\n    'sec-fetch-mode': 'cors',\n    'sec-fetch-site': 'same-origin',\n    'Referer': 'https://open.spotify.com/',",
+        "detail": "getMetadata",
+        "documentation": {}
+    },
+    {
+        "label": "summarise",
+        "kind": 2,
+        "importPath": "getSecret",
+        "description": "getSecret",
+        "peekOfCode": "def summarise(caps):\n    real = {}\n    for cap in caps:\n        sec = cap.get(\"secret\")\n        if not sec or not isinstance(sec, str):\n            continue\n        ver = cap.get(\"version\") or cap.get(\"obj\", {}).get(\"version\")\n        if ver and ver != 0:\n            real[str(int(ver))] = sec\n    if not real:",
+        "detail": "getSecret",
+        "documentation": {}
+    },
+    {
+        "label": "grab_live",
+        "kind": 2,
+        "importPath": "getSecret",
+        "description": "getSecret",
+        "peekOfCode": "def grab_live(progress_callback=None):\n    def emit_progress(msg):\n        if progress_callback:\n            progress_callback(msg)\n        else:\n            print(msg)\n    stealth = \"\"\"(()=>{\n        Object.defineProperty(navigator,'webdriver',{get:()=>false});\n        Object.defineProperty(navigator,'languages',{get:()=>['en-US','en']});\n        Object.defineProperty(navigator,'plugins',{get:()=>[1,2,3,4,5]});",
+        "detail": "getSecret",
+        "documentation": {}
+    },
+    {
+        "label": "scrape_and_save",
+        "kind": 2,
+        "importPath": "getSecret",
+        "description": "getSecret",
+        "peekOfCode": "def scrape_and_save(progress_callback=None):\n    try:\n        caps = grab_live(progress_callback)\n        return summarise(caps)\n    except Exception as e:\n        return False, f\"Error: {str(e)}\"\ndef main():\n    success, message = scrape_and_save()\n    print(message)\n    return 0 if success else 1",
+        "detail": "getSecret",
+        "documentation": {}
+    },
+    {
+        "label": "main",
+        "kind": 2,
+        "importPath": "getSecret",
+        "description": "getSecret",
+        "peekOfCode": "def main():\n    success, message = scrape_and_save()\n    print(message)\n    return 0 if success else 1\nif __name__ == \"__main__\":\n    import sys\n    sys.exit(main())",
+        "detail": "getSecret",
+        "documentation": {}
+    },
+    {
+        "label": "get_session_token_sync",
+        "kind": 2,
+        "importPath": "getToken",
+        "description": "getToken",
+        "peekOfCode": "def get_session_token_sync(max_wait=30):\n    page = None\n    try:\n        page = ChromiumPage()\n        page.get(\"https://spotidownloader.com/\")\n        bypasser = CloudflareBypasser(page, max_retries=3, log=True)\n        bypasser.bypass()\n        if not bypasser.is_bypassed():\n            return None\n        print(\"Cloudflare bypassed successfully.\")",
+        "detail": "getToken",
+        "documentation": {}
+    },
+    {
+        "label": "get_token",
+        "kind": 2,
+        "importPath": "getToken",
+        "description": "getToken",
+        "peekOfCode": "def get_token():\n    return get_session_token_sync()\nif __name__ == \"__main__\":\n    token = get_token()\n    if token:\n        print(token)",
+        "detail": "getToken",
+        "documentation": {}
+    },
+    {
+        "label": "Track",
+        "kind": 6,
+        "importPath": "SpotiDownloader",
+        "description": "SpotiDownloader",
+        "peekOfCode": "class Track:\n    id: str\n    title: str\n    artists: str\n    album: str\n    track_number: int\n    duration_ms: int\n    isrc: str = \"\"\n    image_url: str = \"\"\n    release_date: str = \"\"",
+        "detail": "SpotiDownloader",
+        "documentation": {}
+    },
+    {
+        "label": "SecretScrapeWorker",
+        "kind": 6,
+        "importPath": "SpotiDownloader",
+        "description": "SpotiDownloader",
+        "peekOfCode": "class SecretScrapeWorker(QThread):\n    finished = pyqtSignal(bool, str)\n    progress = pyqtSignal(str)\n    def run(self):\n        try:\n            self.progress.emit(\"Fixing error...\")\n            self.progress.emit(\"Please wait, this may take a moment...\")\n            success, message = scrape_and_save(progress_callback=self.progress.emit)\n            if success:\n                self.finished.emit(True, \"Fixed successfully!\")",
+        "detail": "SpotiDownloader",
+        "documentation": {}
+    },
+    {
+        "label": "FetchTracksThread",
+        "kind": 6,
+        "importPath": "SpotiDownloader",
+        "description": "SpotiDownloader",
+        "peekOfCode": "class FetchTracksThread(QThread):\n    finished = pyqtSignal(dict)\n    error = pyqtSignal(str)\n    def __init__(self, url):\n        super().__init__()\n        self.url = url\n    def run(self):\n        try:\n            metadata = get_filtered_data(self.url)\n            if \"error\" in metadata:",
+        "detail": "SpotiDownloader",
+        "documentation": {}
+    },
+    {
+        "label": "TokenFetchThread",
+        "kind": 6,
+        "importPath": "SpotiDownloader",
+        "description": "SpotiDownloader",
+        "peekOfCode": "class TokenFetchThread(QThread):\n    token_fetched = pyqtSignal(str)\n    token_error = pyqtSignal(str)\n    def __init__(self, interval):\n        super().__init__()\n        self.interval = interval\n    def run(self):\n        loop = asyncio.new_event_loop()\n        asyncio.set_event_loop(loop)\n        token = loop.run_until_complete(get_session_token())",
+        "detail": "SpotiDownloader",
+        "documentation": {}
+    },
+    {
+        "label": "DownloadWorker",
+        "kind": 6,
+        "importPath": "SpotiDownloader",
+        "description": "SpotiDownloader",
+        "peekOfCode": "class DownloadWorker(QThread):\n    finished = pyqtSignal(bool, str, list, list, list)\n    progress = pyqtSignal(str, int)\n    def __init__(self, parent, tracks, outpath, token, is_single_track=False, is_album=False, is_playlist=False, \n                 album_or_playlist_name='', filename_format='title_artist', use_track_numbers=True,\n                 use_artist_subfolders=False, use_album_subfolders=False):\n        super().__init__()\n        self.parent = parent\n        self.tracks = tracks\n        self.outpath = outpath",
+        "detail": "SpotiDownloader",
+        "documentation": {}
+    },
+    {
+        "label": "UpdateDialog",
+        "kind": 6,
+        "importPath": "SpotiDownloader",
+        "description": "SpotiDownloader",
+        "peekOfCode": "class UpdateDialog(QDialog):\n    def __init__(self, current_version, new_version, parent=None):\n        super().__init__(parent)\n        self.setWindowTitle(\"Update Now\")\n        self.setFixedWidth(400)\n        self.setModal(True)\n        layout = QVBoxLayout()\n        message = QLabel(f\"SpotiDownloader v{new_version} Available!\")\n        message.setWordWrap(True)\n        layout.addWidget(message)",
+        "detail": "SpotiDownloader",
+        "documentation": {}
+    },
+    {
+        "label": "SpotiDownloaderGUI",
+        "kind": 6,
+        "importPath": "SpotiDownloader",
+        "description": "SpotiDownloader",
+        "peekOfCode": "class SpotiDownloaderGUI(QWidget):\n    def __init__(self):\n        super().__init__()\n        self.current_version = \"5.4\" \n        self.tracks = []\n        self.all_tracks = []  \n        self.album_or_playlist_name = ''\n        self.reset_state()\n        self.settings = QSettings('SpotiDownloader', 'Settings')\n        self.last_output_path = self.settings.value('output_path', str(Path.home() / \"Music\"))",
+        "detail": "SpotiDownloader",
+        "documentation": {}
+    }
+]

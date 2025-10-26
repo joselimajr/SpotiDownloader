@@ -1,0 +1,12 @@
+
+python.exe -m pip install --upgrade pip
+pip install PyQt6
+pip install pyqtdarktheme
+pip install pyotp
+pip install DrissionPage
+
+
+
+https://www.tunecable.com/spotify-music-tip/free-online-spotify-downloader.html
+https://spotidownloader.com/en6
+

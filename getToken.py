@@ -1,5 +1,6 @@
 from CloudflareBypasser import CloudflareBypasser
 from DrissionPage import ChromiumPage
+import requests
 import time
 
 def get_session_token_sync(max_wait=30):
@@ -7,13 +8,33 @@ def get_session_token_sync(max_wait=30):
     try:
         page = ChromiumPage()
         page.get("https://spotidownloader.com/")
-        
+
         bypasser = CloudflareBypasser(page, max_retries=3, log=True)
         bypasser.bypass()
-        
+
         if not bypasser.is_bypassed():
             return None
-        
+
+        print("Cloudflare bypassed successfully.")
+
+        custom_headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36',
+            'Origin': 'https://spotidownloader.com',
+            'Referer': 'https://spotidownloader.com/'
+        }
+
+        r = requests.post("https://api.spotidownloader.com/session")
+
+        if r.status_code != 200:
+            print("Failed to initiate session request.")
+
+        if "token" in r.json():
+            return r.json()["token"]
+
+        print(r.json())
+
         page.run_js("""
             window.originalFetch = window.fetch;
             window.sessionToken = null;
@@ -27,15 +48,15 @@ def get_session_token_sync(max_wait=30):
                     }
                     return response;
                 });
-            };        
+            };
         """)
-        
+
         for _ in range(max_wait * 2):
             token = page.run_js("return window.sessionToken")
             if token:
                 return token
             time.sleep(0.5)
-        
+
         return None
     except:
         return None
